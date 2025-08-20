@@ -104,12 +104,13 @@
         </div>
 
         <div class="totales" style="margin-top:10px">
-          <div class="totbox">
-            <div class="totline"><span>Subtotal</span><strong id="lblSubtotal">$0.00</strong></div>
-            <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
+          <div class=\"totbox\">
+            <div class=\"totline\"><span>Subtotal (base)</span><strong id=\"lblBase\">$0.00</strong></div>
+            <div class=\"totline\"><span>IVA 16%</span><strong id=\"lblIva\">$0.00</strong></div>
+            <div class=\"totline\"><span>Total</span><strong id=\"lblTotal\">$0.00</strong></div>
           </div>
 
-          <div class="paygrid">
+          <div class=\"paygrid\">
             <div>
               <label style="font-size:12px">Pago recibido</label>
               <input type="number" id="inpPago" inputmode="decimal" min="0" step="0.01" placeholder="0.00" />
@@ -120,8 +121,16 @@
             </div>
           </div>
 
-          <button class="btn" id="btnCobrar">💳 Cobrar e Imprimir</button>
-          <small id="msgCobro" style="display:block;color:#b00;margin-top:6px"></small>
+          <button class=\"btn\" id=\"btnCobrar\">💳 Cobrar e Imprimir</button>
+          <small id=\"msgCobro\" style=\"display:block;color:#b00;margin-top:6px\"></small>
+
+          <div style=\"margin-top:10px;border-top:1px dashed #cfd6e3;padding-top:10px\">
+            <label style=\"font-size:12px\">Reimpresión por folio</label>
+            <div style=\"display:flex;gap:8px\">
+              <input type=\"text\" id=\"inpFolioReimp\" placeholder=\"V-000123\" style=\"flex:1\"/>
+              <button class=\"btn\" id=\"btnReimp\">🧾 Reimprimir ticket</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -155,8 +164,14 @@
       tipoPrecio: 'publico',
       items: [] // {id, codigo, desc, cant, precioUnit, importe}
     };
+
+    // ⚙️ IVA (configurable)
+    const TASA_IVA = 0.16;                 // 16%
+    const PRECIOS_INCLUYEN_IVA = true;     // true = tus precios ya incluyen IVA
+
     const tbody = document.getElementById('tbodyCarrito');
-    const lblSubtotal = document.getElementById('lblSubtotal');
+    const lblBase = document.getElementById('lblBase');
+    const lblIva = document.getElementById('lblIva');
     const lblTotal = document.getElementById('lblTotal');
     const inpPago = document.getElementById('inpPago');
     const inpCambio = document.getElementById('inpCambio');
@@ -360,9 +375,29 @@
       recalcular();
     }
 
+    function totales(){
+      const suma = state.items.reduce((a,i)=>a+i.importe,0);
+      if(PRECIOS_INCLUYEN_IVA){
+        const base = round2(suma / (1 + TASA_IVA));
+        const iva  = round2(suma - base);
+        return { base, iva, total: suma };
+      } else {
+        const base = round2(suma);
+        const iva  = round2(base * TASA_IVA);
+        return { base, iva, total: round2(base + iva) };
+      }
+    }
+
     function recalcular(){
-      const subtotal = state.items.reduce((a,i)=>a+i.importe,0);
-      lblSubtotal.textContent = `$${money(subtotal)}`;
+      const t = totales();
+      lblBase.textContent  = `$${money(t.base)}`;
+      lblIva.textContent   = `$${money(t.iva)}`;
+      lblTotal.textContent = `$${money(t.total)}`;
+      const pago = Number(inpPago.value||0);
+      const cambio = Math.max(0, round2(pago - t.total));
+      inpCambio.value = `$${money(cambio)}`;
+      msgCobro.textContent = '';
+    }`;
       lblTotal.textContent = `$${money(subtotal)}`;
       const pago = Number(inpPago.value||0);
       const cambio = Math.max(0, round2(pago - subtotal));
@@ -393,9 +428,41 @@
     document.getElementById('btnCobrar').addEventListener('click', cobrarVenta);
 
     async function cobrarVenta(){
-      const total = state.items.reduce((a,i)=>a+i.importe,0);
+      const t = totales();
       const pago = Number(inpPago.value||0);
       if(state.items.length===0){ msgCobro.textContent='Carrito vacío'; return; }
+      if(pago < t.total){ msgCobro.textContent='El pago es menor que el total'; return; }
+
+      const consecutivoRef = doc(db,'consecutivos','ventas');
+      const ventaId = crypto.randomUUID();
+      const ventaRef = doc(db,'ventas', ventaId);
+
+      await runTransaction(db, async (tx)=>{
+        const consSnap = await tx.get(consecutivoRef);
+        const n = (consSnap.exists()? (consSnap.data().folioActual||0):0) + 1;
+        tx.set(consecutivoRef,{folioActual:n});
+        const folioStr = `V-${String(n).padStart(6,'0')}`;
+        const payload = {
+          folio: folioStr,
+          fecha: serverTimestamp(),
+          tipoPrecio: state.tipoPrecio,
+          subtotal: t.base,
+          impuestos: t.iva,
+          total: t.total,
+          pago: round2(pago),
+          cambio: round2(pago - t.total),
+          items: state.items.map(i=>({ codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe }))
+        };
+        tx.set(ventaRef, payload);
+      });
+
+      const vSnap = await getDoc(ventaRef);
+      const venta = vSnap.data();
+      imprimirTicket(venta);
+
+      state.items=[]; renderCarrito(); saveLocal();
+      document.getElementById('buscador').value=''; inpPago.value=''; recalcular();
+    }
       if(pago < total){ msgCobro.textContent='El pago es menor que el total'; return; }
 
       const consecutivoRef = doc(db,'consecutivos','ventas');
@@ -434,7 +501,31 @@
     // === Ticket ===
     function imprimirTicket(venta){
       const el = document.getElementById('ticket');
+      const moneyStr = v=> Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
       const line = (t='') => `<div style="white-space:pre">${t}</div>`;
+      const hdr = [
+        'LA PROVEEDORA',
+        'BRAVO 244 CENTRO ALLENDE',
+        `FOLIO: ${venta.folio}`,
+        `FECHA: ${new Date().toLocaleString('es-MX')}`
+      ].map(line).join('');
+      const det = (venta.items||[]).map(i=>{
+        const desc = (i.descripcion||'').slice(0,24);
+        const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
+        const der = moneyStr(i.importe).padStart(8,' ');
+        return line(izq+der);
+      }).join('');
+      const tot = [
+        line('------------------------------'),
+        line(`SUBTOTAL:         ${moneyStr(venta.subtotal).padStart(10,' ')}`),
+        line(`IVA 16%:          ${moneyStr(venta.impuestos).padStart(10,' ')}`),
+        line(`TOTAL:            ${moneyStr(venta.total).padStart(10,' ')}`),
+        line(`PAGO:             ${moneyStr(venta.pago).padStart(10,' ')}`),
+        line(`CAMBIO:           ${moneyStr(venta.cambio).padStart(10,' ')}`)
+      ].join('');
+      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
+      window.print();
+    }</div>`;
       const hdr = [
         'LA PROVEEDORA',
         'BRAVO 244 CENTRO ALLENDE',
@@ -455,6 +546,21 @@
       ].join('');
       el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
       window.print();
+    }
+  // === Reimpresión por folio ===
+    document.getElementById('btnReimp').addEventListener('click', reimprimirPorFolio);
+    async function reimprimirPorFolio(){
+      const folio = (document.getElementById('inpFolioReimp').value||'').trim();
+      if(!folio){ msgCobro.textContent='Escribe un folio, ej. V-000123'; return; }
+      msgCobro.textContent='';
+      try{
+        const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+        const q = query(collection(db,'ventas'), where('folio','==', folio));
+        const snap = await getDocs(q);
+        if(snap.empty){ msgCobro.textContent='No se encontró ese folio.'; return; }
+        const venta = { id: snap.docs[0].id, ...snap.docs[0].data() };
+        imprimirTicket(venta);
+      }catch(e){ msgCobro.textContent='Error al reimprimir'; console.error(e); }
     }
   </script>
 </body>
