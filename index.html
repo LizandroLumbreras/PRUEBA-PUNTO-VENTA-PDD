@@ -14,7 +14,7 @@
     .wrap{max-width:1100px;margin:auto;padding:16px}
     header{display:flex;align-items:center;justify-content:space-between;color:#fff;margin-bottom:12px}
     header h1{font-size:20px;margin:0}
-    .card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:14px}
+    .card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:14px;margin-bottom:16px}
     .grid{display:grid;grid-template-columns:2fr 1.3fr;gap:14px}
     .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
     .brand{font-weight:600;letter-spacing:.3px}
@@ -104,13 +104,13 @@
         </div>
 
         <div class="totales" style="margin-top:10px">
-          <div class=\"totbox\">
-            <div class=\"totline\"><span>Subtotal (base)</span><strong id=\"lblBase\">$0.00</strong></div>
-            <div class=\"totline\"><span>IVA 16%</span><strong id=\"lblIva\">$0.00</strong></div>
-            <div class=\"totline\"><span>Total</span><strong id=\"lblTotal\">$0.00</strong></div>
+          <div class="totbox">
+            <div class="totline"><span>Subtotal</span><strong id="lblSubtotal">$0.00</strong></div>
+            <div class="totline"><span>IVA (16%)</span><strong id="lblIva">$0.00</strong></div>
+            <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
           </div>
 
-          <div class=\"paygrid\">
+          <div class="paygrid">
             <div>
               <label style="font-size:12px">Pago recibido</label>
               <input type="number" id="inpPago" inputmode="decimal" min="0" step="0.01" placeholder="0.00" />
@@ -121,18 +121,18 @@
             </div>
           </div>
 
-          <button class=\"btn\" id=\"btnCobrar\">💳 Cobrar e Imprimir</button>
-          <small id=\"msgCobro\" style=\"display:block;color:#b00;margin-top:6px\"></small>
-
-          <div style=\"margin-top:10px;border-top:1px dashed #cfd6e3;padding-top:10px\">
-            <label style=\"font-size:12px\">Reimpresión por folio</label>
-            <div style=\"display:flex;gap:8px\">
-              <input type=\"text\" id=\"inpFolioReimp\" placeholder=\"V-000123\" style=\"flex:1\"/>
-              <button class=\"btn\" id=\"btnReimp\">🧾 Reimprimir ticket</button>
-            </div>
-          </div>
+          <button class="btn" id="btnCobrar">💳 Cobrar e Imprimir</button>
+          <button class="btn" id="btnReimprimir" style="background:#555">🖨️ Reimprimir Último Ticket</button>
+          <button class="btn" id="btnCorte" style="background:#b36b00">📊 Corte de Caja</button>
+          <small id="msgCobro" style="display:block;color:#b00;margin-top:6px"></small>
         </div>
       </div>
+    </div>
+
+    <!-- Corte de caja -->
+    <div class="card" id="corteBox" style="display:none">
+      <h3>Corte de Caja</h3>
+      <div id="corteContenido" style="font-size:14px"></div>
     </div>
   </div>
 
@@ -147,420 +147,95 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs, orderBy, doc, runTransaction, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // === Config Firebase ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-      authDomain: "inventariopv-643f1.firebaseapp.com",
-      projectId: "inventariopv-643f1",
-      storageBucket: "inventariopv-643f1.firebasestorage.app",
-      messagingSenderId: "96242533231",
-      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-    };
+    const firebaseConfig = { apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM", authDomain: "inventariopv-643f1.firebaseapp.com", projectId: "inventariopv-643f1", storageBucket: "inventariopv-643f1.firebasestorage.app", messagingSenderId: "96242533231", appId: "1:96242533231:web:aae75a18fbaf9840529e9a" };
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // === Estado POS ===
-    const state = {
-      tipoPrecio: 'publico',
-      items: [] // {id, codigo, desc, cant, precioUnit, importe}
-    };
+    const state = { tipoPrecio: 'publico', items: [] };
+    const tbody=document.getElementById('tbodyCarrito');
+    const lblSubtotal=document.getElementById('lblSubtotal');
+    const lblIva=document.getElementById('lblIva');
+    const lblTotal=document.getElementById('lblTotal');
+    const inpPago=document.getElementById('inpPago');
+    const inpCambio=document.getElementById('inpCambio');
+    const msgCobro=document.getElementById('msgCobro');
 
-    // ⚙️ IVA (configurable)
-    const TASA_IVA = 0.16;                 // 16%
-    const PRECIOS_INCLUYEN_IVA = true;     // true = tus precios ya incluyen IVA
-
-    const tbody = document.getElementById('tbodyCarrito');
-    const lblBase = document.getElementById('lblBase');
-    const lblIva = document.getElementById('lblIva');
-    const lblTotal = document.getElementById('lblTotal');
-    const inpPago = document.getElementById('inpPago');
-    const inpCambio = document.getElementById('inpCambio');
-    const msgCobro = document.getElementById('msgCobro');
-
-    function money(n){
-      const x = Number(n||0);
-      return x.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2});
-    }
-
-    // === Tier de precio ===
-    const tierBtns = document.getElementById('tierBtns');
-    tierBtns.addEventListener('click',(e)=>{
-      if(e.target.tagName!=='BUTTON') return;
-      tierBtns.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-      e.target.classList.add('active');
-      state.tipoPrecio = e.target.dataset.tier;
-      // Revalorizar precios del carrito
-      state.items.forEach(it=>{
-        const prod = it.__prod;
-        it.precioUnit = precioPorTier(prod, state.tipoPrecio);
-        it.importe = round2(it.precioUnit * it.cant);
-      });
-      renderCarrito();
-    });
-
-    function precioPorTier(p, tier){
-      const pub = num(p.precioPublico);
-      const med = num(p.medioMayoreo);
-      const may = num(p.mayoreo);
-      if(tier==='mayoreo') return may || med || pub;
-      if(tier==='medio')   return med || pub;
-      return pub;
-    }
-    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
-    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
-
-    // === Buscador (basado en tu código) ===
-    const input = document.getElementById('buscador');
-    const resultadosDiv = document.getElementById('resultados');
-    const barraProgreso = document.getElementById('barraProgreso');
-    const estado = document.getElementById('estado');
-    const contador = document.getElementById('contador');
-
-    let resultados = [];
-    let pagina = 0;
-    const porPagina = 30;
-
-    async function buscarProductos(termino){
-      resultadosDiv.innerHTML = "⏳ Buscando...";
-      barraProgreso.value = 0; estado.textContent = ""; resultados = [];
-
-      // 1) Si parece código de barras exacto
-      if(/^\d+$/.test(termino)){
-        const q1 = query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==', termino));
-        const s1 = await getDocs(q1);
-        resultados = s1.docs.map(d=>({id:d.id, ...d.data()}));
-        if(resultados.length>0){ mostrarPagina(0); return; }
-      }
-
-      // 2) Búsqueda por concepto (cliente-side)
-      const q2 = query(collection(db,'productos'), where('activo','==',true), orderBy('concepto'));
-      const s2 = await getDocs(q2);
-      const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
-      s2.forEach(docu=>{
-        const p = {id:docu.id, ...docu.data()};
-        const texto = (p.concepto||'').toLowerCase();
-        if(palabras.every(w=>texto.includes(w))) resultados.push(p);
-      });
-      if(resultados.length===0){
-        resultadosDiv.innerHTML = '❌ No se encontraron resultados'; contador.textContent='';
-      } else { mostrarPagina(0); }
-    }
-
-    function mostrarPagina(n){
-      pagina = n; resultadosDiv.innerHTML = '';
-      const inicio = pagina*porPagina, fin = inicio+porPagina;
-      const lista = resultados.slice(inicio, fin);
-
-      lista.forEach(p=>{
-        const div = document.createElement('div');
-        div.className = 'producto';
-        const preciosHtml = `
-          <div class="precios">
-            <span class="precio-publico">Público: $${p.precioPublico? money(p.precioPublico):'—'}</span>
-            <span class="precio-medio">Medio: $${p.medioMayoreo? money(p.medioMayoreo):'—'}</span>
-            <span class="precio-mayoreo">Mayoreo: $${p.mayoreo? money(p.mayoreo):'—'}</span>
-          </div>`;
-        div.innerHTML = `
-          <div class="info">
-            <b>${p.concepto||'(Sin nombre)'}</b><br>
-            <small>Código: ${p.codigoBarra||'—'}</small>
-            ${preciosHtml}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" min="1" step="1" value="1" style="width:64px" />
-            <button class="btn">+ Agregar</button>
-          </div>`;
-
-        const qty = div.querySelector('input');
-        const btn = div.querySelector('button');
-        btn.addEventListener('click',()=>{
-          const cant = Math.max(1, parseInt(qty.value||'1',10));
-          agregarAlCarritoDesdeProducto(p, cant);
-        });
-        resultadosDiv.appendChild(div);
-      });
-
-      contador.textContent = `Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.ceil(resultados.length/porPagina)}`;
-    }
-
-    let debounceTimer;
-    input.addEventListener('input',()=>{
-      clearTimeout(debounceTimer);
-      const t = input.value.trim();
-      if(!t){ resultadosDiv.innerHTML=''; contador.textContent=''; return; }
-      debounceTimer = setTimeout(()=>buscarProductos(t), 500);
-    });
-    input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ const t=input.value.trim(); if(t) buscarProductos(t); }});
-
-    // === Escáner ===
-    const divLector = document.getElementById('lector');
-    document.getElementById('btnScan').addEventListener('click', iniciarEscaneo);
-    function iniciarEscaneo(){
-      divLector.style.display='block';
-      const lector = new Html5Qrcode('lector');
-      lector.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: 250 },
-        async codigo => {
-          input.value = codigo; await buscarProductos(codigo);
-          lector.stop(); divLector.style.display='none';
-        },
-        err => console.log('scan err', err)
-      ).catch(err=>{ console.error('cam error',err); });
-    }
-
-    // === Carrito ===
-    function agregarAlCarritoDesdeProducto(prod, cant){
-      const precio = precioPorTier(prod, state.tipoPrecio);
-      const existente = state.items.find(x=>x.id===prod.id);
-      if(existente){
-        existente.cant += cant;
-        existente.importe = round2(existente.cant * existente.precioUnit);
-      } else {
-        state.items.push({
-          id: prod.id,
-          codigo: prod.codigoBarra||'',
-          desc: prod.concepto||'',
-          cant: cant,
-          precioUnit: precio,
-          importe: round2(precio*cant),
-          __prod: prod
-        });
-      }
-      renderCarrito();
-      saveLocal();
-    }
+    function money(n){return Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
+    function round2(x){return Math.round((x+Number.EPSILON)*100)/100;}
 
     function renderCarrito(){
       tbody.innerHTML='';
       state.items.forEach((it,idx)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${it.codigo}</td>
-          <td style="text-align:left">${it.desc}</td>
-          <td>
-            <div style="display:flex;justify-content:center;gap:4px;align-items:center">
-              <button data-act="dec" data-i="${idx}">−</button>
-              <input type="number" min="1" step="1" value="${it.cant}" style="width:64px" data-i="${idx}"/>
-              <button data-act="inc" data-i="${idx}">+</button>
-            </div>
-          </td>
-          <td>$${money(it.precioUnit)}</td>
-          <td>$${money(it.importe)}</td>
-          <td class="acciones">
-            <button data-act="del" data-i="${idx}">Eliminar</button>
-          </td>`;
+        const tr=document.createElement('tr');
+        tr.innerHTML=`<td>${it.codigo}</td><td style="text-align:left">${it.desc}</td><td>${it.cant}</td><td>$${money(it.precioUnit)}</td><td>$${money(it.importe)}</td><td><button onclick="state.items.splice(${idx},1);renderCarrito()">Eliminar</button></td>`;
         tbody.appendChild(tr);
-      });
-      // Delegación
-      tbody.querySelectorAll('button').forEach(b=>{
-        b.addEventListener('click', (e)=>{
-          const i = Number(e.currentTarget.dataset.i);
-          const act = e.currentTarget.dataset.act;
-          if(act==='del'){ state.items.splice(i,1); }
-          if(act==='inc'){ state.items[i].cant++; state.items[i].importe = round2(state.items[i].cant*state.items[i].precioUnit); }
-          if(act==='dec'){ state.items[i].cant = Math.max(1, state.items[i].cant-1); state.items[i].importe = round2(state.items[i].cant*state.items[i].precioUnit); }
-          renderCarrito(); saveLocal();
-        });
-      });
-      tbody.querySelectorAll('input[type="number"]').forEach(inp=>{
-        inp.addEventListener('change',(e)=>{
-          const i = Number(e.currentTarget.dataset.i);
-          const v = Math.max(1, parseInt(e.currentTarget.value||'1',10));
-          state.items[i].cant = v;
-          state.items[i].importe = round2(v*state.items[i].precioUnit);
-          renderCarrito(); saveLocal();
-        });
       });
       recalcular();
     }
 
-    function totales(){
-      const suma = state.items.reduce((a,i)=>a+i.importe,0);
-      if(PRECIOS_INCLUYEN_IVA){
-        const base = round2(suma / (1 + TASA_IVA));
-        const iva  = round2(suma - base);
-        return { base, iva, total: suma };
-      } else {
-        const base = round2(suma);
-        const iva  = round2(base * TASA_IVA);
-        return { base, iva, total: round2(base + iva) };
-      }
-    }
-
     function recalcular(){
-      const t = totales();
-      lblBase.textContent  = `$${money(t.base)}`;
-      lblIva.textContent   = `$${money(t.iva)}`;
-      lblTotal.textContent = `$${money(t.total)}`;
-      const pago = Number(inpPago.value||0);
-      const cambio = Math.max(0, round2(pago - t.total));
-      inpCambio.value = `$${money(cambio)}`;
-      msgCobro.textContent = '';
-    }`;
-      lblTotal.textContent = `$${money(subtotal)}`;
-      const pago = Number(inpPago.value||0);
-      const cambio = Math.max(0, round2(pago - subtotal));
-      inpCambio.value = `$${money(cambio)}`;
-      msgCobro.textContent = '';
+      const subtotal=state.items.reduce((a,i)=>a+i.importe,0);
+      const iva=round2(subtotal*0.16);
+      const total=round2(subtotal+iva);
+      lblSubtotal.textContent=`$${money(subtotal)}`;
+      lblIva.textContent=`$${money(iva)}`;
+      lblTotal.textContent=`$${money(total)}`;
+      const pago=Number(inpPago.value||0);
+      inpCambio.value=`$${money(Math.max(0,round2(pago-total)))}`;
     }
+    inpPago.addEventListener('input',recalcular);
 
-    inpPago.addEventListener('input', recalcular);
-
-    // Persistencia local
-    const LSKEY='carritoPOS';
-    function saveLocal(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio, items:state.items})); }
-    function loadLocal(){
-      try{
-        const raw = JSON.parse(localStorage.getItem(LSKEY)||'null');
-        if(raw){ state.tipoPrecio = raw.tipoPrecio||'publico'; state.items = (raw.items||[]).map(x=>({...x}));
-          // activar botón del tier actual
-          tierBtns.querySelectorAll('button').forEach(b=>{
-            b.classList.toggle('active', b.dataset.tier===state.tipoPrecio);
-          });
-          renderCarrito();
-        }
-      }catch(e){ /* ignore */ }
-    }
-    loadLocal();
-
-    // === Cobro ===
     document.getElementById('btnCobrar').addEventListener('click', cobrarVenta);
+    document.getElementById('btnReimprimir').addEventListener('click', ()=>{if(lastVenta) imprimirTicket(lastVenta);});
+    document.getElementById('btnCorte').addEventListener('click', corteCaja);
 
+    let lastVenta=null;
     async function cobrarVenta(){
-      const t = totales();
-      const pago = Number(inpPago.value||0);
-      if(state.items.length===0){ msgCobro.textContent='Carrito vacío'; return; }
-      if(pago < t.total){ msgCobro.textContent='El pago es menor que el total'; return; }
+      const subtotal=state.items.reduce((a,i)=>a+i.importe,0);
+      const iva=round2(subtotal*0.16);
+      const total=round2(subtotal+iva);
+      const pago=Number(inpPago.value||0);
+      if(state.items.length===0){msgCobro.textContent='Carrito vacío';return;}
+      if(pago<total){msgCobro.textContent='Pago insuficiente';return;}
 
-      const consecutivoRef = doc(db,'consecutivos','ventas');
-      const ventaId = crypto.randomUUID();
-      const ventaRef = doc(db,'ventas', ventaId);
+      const consecutivoRef=doc(db,'consecutivos','ventas');
+      const ventaId=crypto.randomUUID();
+      const ventaRef=doc(db,'ventas',ventaId);
 
-      await runTransaction(db, async (tx)=>{
-        const consSnap = await tx.get(consecutivoRef);
-        const n = (consSnap.exists()? (consSnap.data().folioActual||0):0) + 1;
+      await runTransaction(db, async(tx)=>{
+        const cons=await tx.get(consecutivoRef);
+        const n=(cons.exists()?(cons.data().folioActual||0):0)+1;
         tx.set(consecutivoRef,{folioActual:n});
-        const folioStr = `V-${String(n).padStart(6,'0')}`;
-        const payload = {
-          folio: folioStr,
-          fecha: serverTimestamp(),
-          tipoPrecio: state.tipoPrecio,
-          subtotal: t.base,
-          impuestos: t.iva,
-          total: t.total,
-          pago: round2(pago),
-          cambio: round2(pago - t.total),
-          items: state.items.map(i=>({ codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe }))
-        };
-        tx.set(ventaRef, payload);
+        const folioStr=`V-${String(n).padStart(6,'0')}`;
+        const payload={folio:folioStr,fecha:serverTimestamp(),tipoPrecio:state.tipoPrecio,subtotal:round2(subtotal),iva,total,pago,cambio:round2(pago-total),items:state.items.map(i=>({codigo:i.codigo,descripcion:i.desc,cant:i.cant,precioUnit:i.precioUnit,importe:i.importe}))};
+        tx.set(ventaRef,payload);
       });
-
-      const vSnap = await getDoc(ventaRef);
-      const venta = vSnap.data();
-      imprimirTicket(venta);
-
-      state.items=[]; renderCarrito(); saveLocal();
-      document.getElementById('buscador').value=''; inpPago.value=''; recalcular();
-    }
-      if(pago < total){ msgCobro.textContent='El pago es menor que el total'; return; }
-
-      const consecutivoRef = doc(db,'consecutivos','ventas');
-      const ventaId = crypto.randomUUID();
-      const ventaRef = doc(db,'ventas', ventaId);
-
-      await runTransaction(db, async (tx)=>{
-        const consSnap = await tx.get(consecutivoRef);
-        const n = (consSnap.exists()? (consSnap.data().folioActual||0):0) + 1;
-        tx.set(consecutivoRef,{folioActual:n});
-        const folioStr = `V-${String(n).padStart(6,'0')}`;
-        const payload = {
-          folio: folioStr,
-          fecha: serverTimestamp(),
-          tipoPrecio: state.tipoPrecio,
-          subtotal: round2(total),
-          impuestos: 0,
-          total: round2(total),
-          pago: round2(pago),
-          cambio: round2(pago-total),
-          items: state.items.map(i=>({ codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe }))
-        };
-        tx.set(ventaRef, payload);
-      });
-
-      // Traer la venta guardada para ticket (folio)
-      const vSnap = await getDoc(ventaRef);
-      const venta = vSnap.data();
-      imprimirTicket(venta);
-
-      // limpiar
-      state.items=[]; renderCarrito(); saveLocal();
-      input.value=''; inpPago.value=''; recalcular();
+      const snap=await getDoc(ventaRef); lastVenta=snap.data();
+      imprimirTicket(lastVenta);
+      state.items=[];renderCarrito();inpPago.value='';recalcular();
     }
 
-    // === Ticket ===
-    function imprimirTicket(venta){
-      const el = document.getElementById('ticket');
-      const moneyStr = v=> Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-      const line = (t='') => `<div style="white-space:pre">${t}</div>`;
-      const hdr = [
-        'LA PROVEEDORA',
-        'BRAVO 244 CENTRO ALLENDE',
-        `FOLIO: ${venta.folio}`,
-        `FECHA: ${new Date().toLocaleString('es-MX')}`
-      ].map(line).join('');
-      const det = (venta.items||[]).map(i=>{
-        const desc = (i.descripcion||'').slice(0,24);
-        const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
-        const der = moneyStr(i.importe).padStart(8,' ');
-        return line(izq+der);
-      }).join('');
-      const tot = [
-        line('------------------------------'),
-        line(`SUBTOTAL:         ${moneyStr(venta.subtotal).padStart(10,' ')}`),
-        line(`IVA 16%:          ${moneyStr(venta.impuestos).padStart(10,' ')}`),
-        line(`TOTAL:            ${moneyStr(venta.total).padStart(10,' ')}`),
-        line(`PAGO:             ${moneyStr(venta.pago).padStart(10,' ')}`),
-        line(`CAMBIO:           ${moneyStr(venta.cambio).padStart(10,' ')}`)
-      ].join('');
-      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
-      window.print();
-    }</div>`;
-      const hdr = [
-        'LA PROVEEDORA',
-        'BRAVO 244 CENTRO ALLENDE',
-        `FOLIO: ${venta.folio}`,
-        `FECHA: ${new Date().toLocaleString('es-MX')}`
-      ].map(line).join('');
-      const det = (venta.items||[]).map(i=>{
-        const desc = (i.descripcion||'').slice(0,24);
-        const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
-        const der = money(i.importe).padStart(8,' ');
-        return line(izq+der);
-      }).join('');
-      const tot = [
-        line('------------------------------'),
-        line(`TOTAL:            ${money(venta.total).padStart(10,' ')}`),
-        line(`PAGO:             ${money(venta.pago).padStart(10,' ')}`),
-        line(`CAMBIO:           ${money(venta.cambio).padStart(10,' ')}`)
-      ].join('');
-      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
+    function imprimirTicket(v){
+      const el=document.getElementById('ticket');
+      const line=t=>`<div style="white-space:pre">${t}</div>`;
+      const hdr=['LA PROVEEDORA','BRAVO 244 CENTRO ALLENDE',`FOLIO: ${v.folio}`,`FECHA: ${new Date().toLocaleString('es-MX')}`].map(line).join('');
+      const det=(v.items||[]).map(i=>{const desc=(i.descripcion||'').slice(0,20);return line(`${i.cant}x ${desc}`.padEnd(24,' ')+money(i.importe).padStart(8,' '));}).join('');
+      const tot=[line('------------------------------'),line(`SUBTOTAL: ${money(v.subtotal)}`),line(`IVA: ${money(v.iva)}`),line(`TOTAL: ${money(v.total)}`),line(`PAGO: ${money(v.pago)}`),line(`CAMBIO: ${money(v.cambio)}`)].join('');
+      el.innerHTML=hdr+line('------------------------------')+det+tot+line('¡GRACIAS!');
       window.print();
     }
-  // === Reimpresión por folio ===
-    document.getElementById('btnReimp').addEventListener('click', reimprimirPorFolio);
-    async function reimprimirPorFolio(){
-      const folio = (document.getElementById('inpFolioReimp').value||'').trim();
-      if(!folio){ msgCobro.textContent='Escribe un folio, ej. V-000123'; return; }
-      msgCobro.textContent='';
-      try{
-        const { getDocs, collection, query, where } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-        const q = query(collection(db,'ventas'), where('folio','==', folio));
-        const snap = await getDocs(q);
-        if(snap.empty){ msgCobro.textContent='No se encontró ese folio.'; return; }
-        const venta = { id: snap.docs[0].id, ...snap.docs[0].data() };
-        imprimirTicket(venta);
-      }catch(e){ msgCobro.textContent='Error al reimprimir'; console.error(e); }
+
+    async function corteCaja(){
+      const q=query(collection(db,'ventas'), orderBy('fecha','desc'));
+      const snap=await getDocs(q);
+      let totalVentas=0, totalIva=0, totalSub=0, num=0;
+      snap.forEach(d=>{const v=d.data();totalVentas+=v.total||0;totalIva+=v.iva||0;totalSub+=v.subtotal||0;num++;});
+      const cont=document.getElementById('corteContenido');
+      cont.innerHTML=`<p><b>Ventas registradas:</b> ${num}</p>
+      <p><b>Subtotal acumulado:</b> $${money(totalSub)}</p>
+      <p><b>IVA acumulado:</b> $${money(totalIva)}</p>
+      <p><b>Total vendido:</b> $${money(totalVentas)}</p>`;
+      document.getElementById('corteBox').style.display='block';
     }
   </script>
 </body>
