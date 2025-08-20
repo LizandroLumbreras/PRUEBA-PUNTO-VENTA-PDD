@@ -1,479 +1,461 @@
-<!DOCTYPE html><html lang="es"><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>POS – La Proveedora (Vista Clásica)</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
-<style>
-:root{--prim:#0c6cbd;--azul:#00416A;--card:#fff;--sombra:rgba(0,0,0,.12)}
-*{box-sizing:border-box}body{font-family:Poppins,system-ui,Arial;background:linear-gradient(90deg,#00416A,#E4E5E6);margin:0;color:#111}
-.wrap{max-width:1100px;margin:auto;padding:12px}
-
-/* ── Barra superior (menú clásico) ─────────────────────────────── */
-.topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-.topbar .mbtn{background:#fff;border:1px solid #d9dee6;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px var(--sombra);cursor:pointer}
-.topbar .mwrap{display:flex;gap:8px}
-
-/* ── Encabezado reducido ───────────────────────────────────────── */
-header{display:flex;align-items:center;justify-content:space-between;color:#fff;margin:6px 0 10px}
-header .brand{display:flex;align-items:center;gap:10px}
-header img{height:38px;width:38px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
-
-/* ── Cards / layout ───────────────────────────────────────────── */
-.card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:12px}
-.grid{display:grid;grid-template-columns:1.6fr 1.2fr;gap:12px}
-
-/* ── Panel izquierdo estilo “ventana” ─────────────────────────── */
-.visor{display:grid;grid-template-columns:1fr 210px;gap:10px;align-items:start}
-.busq{grid-column:1 / span 2;display:flex;gap:8px;align-items:center}
-#buscador{flex:1;padding:12px 14px;border:1px solid #cfd6e3;border-radius:10px;font-size:18px;background:#fff6a6}
-.busq .right{display:flex;gap:8px;align-items:center}
-.tier{display:flex;gap:6px}
-.tier button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
-.tier .active{background:var(--prim);color:#fff;border-color:var(--prim)}
-.btn{background:var(--prim);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
-
-.logoBox{min-height:220px;background:linear-gradient(180deg,#f9fbff,#ffffff);border:1px dashed #d7deea;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
-.logoBox img{max-height:180px;max-width:90%;opacity:.9}
-.resultados{max-height:42vh;overflow:auto;border:1px solid #eef1f5;border-radius:12px;padding:8px;background:#fff}
-.producto{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;gap:10px}
-.producto .precios{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.small{font-size:12px;color:#444}
-
-/* ── Panel de estado derecho (fecha, venta, cajero) ───────────── */
-.status{display:grid;gap:6px}
-.status .kv{display:flex;justify-content:space-between;border-bottom:1px dashed #e5e7f2;padding:6px 0}
-
-/* ── Carrito ──────────────────────────────────────────────────── */
-table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eef1f5;text-align:center;font-size:13px}th{background:#f8fafc}
-.acciones button{border:1px solid #dfe3ea;background:#fff;border-radius:8px;padding:4px 8px;margin:0 2px;cursor:pointer}
-.totales{display:grid;gap:8px}.totline{display:flex;justify-content:space-between}
-.totbox{background:#f8fafc;border:1px dashed #cfd6e3;border-radius:12px;padding:10px}
-
-/* ── Barra de atajos al pie ───────────────────────────────────── */
-.footerbar{margin-top:10px;background:rgba(255,255,255,.9);border:1px solid #d9dee6;border-radius:10px;padding:6px 10px;font-size:12px;display:flex;gap:14px;flex-wrap:wrap;box-shadow:0 6px 18px var(--sombra)}
-.k{font-weight:700;background:#eef3fb;border:1px solid #d9e2ff;padding:2px 6px;border-radius:6px}
-
-/* ── Ticket impresión ─────────────────────────────────────────── */
-#ticket{display:none}
-@media print{
-  body *{visibility:hidden}
-  #ticket,#ticket *{visibility:visible}
-  #ticket{display:block;position:absolute;left:0;top:0;width:230px;padding:6px 8px;font-family:monospace;line-height:1.2;color:#000;background:#fff}
-}
-  /* ====== OVERRIDES VISTA CLÁSICA ====== */
-.topbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
-.topbar .mbtn{background:#fff;border:1px solid #d9dee6;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,.12);cursor:pointer}
-
-header .brand{display:flex;align-items:center;gap:10px}
-header img{height:38px;width:38px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
-
-/* visor = logo a la izquierda + panel de estado a la derecha */
-.visor{display:grid;grid-template-columns:1fr 210px;gap:10px;align-items:start;margin-top:8px}
-.logoBox{min-height:220px;background:linear-gradient(180deg,#f9fbff,#fff);border:1px dashed #d7deea;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.logoBox img{max-height:180px;max-width:90%;opacity:.9}
-
-.status{display:grid;gap:6px;background:#fff;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,.12);padding:10px}
-.status .kv{display:flex;justify-content:space-between;border-bottom:1px dashed #e5e7f2;padding:6px 0}
-
-#buscador{background:#fff6a6;font-size:18px} /* campo amarillo grande */
-
-</style>
-</head><body>
-<div class="wrap">
-
-  <!-- Menú clásico superior -->
-  <div class="topbar">
-    <div class="mwrap">
-      <button class="mbtn" id="mbCorte">Corte de Caja</button>
-      <button class="mbtn" id="mbCancelar">Cancelar Venta</button>
-      <button class="mbtn" id="mbDesc">Descuento</button>
-      <button class="mbtn" id="mbSalidas">Salidas de Efectivo</button>
-    </div>
-    <div style="flex:1"></div>
-    <button class="mbtn" id="mbSalir">Salir</button>
-  </div>
-
-  <header>
-    <div class="brand">
-      <img src="https://raw.githubusercontent.com/lizandrolumbreras/CIGARRO-INVENTARIO/main/logo_proveedora.webp" alt="logo"/>
-      <h2 style="margin:0;font-size:18px">Punto de Venta – La Proveedora</h2>
-    </div>
-    <div>PROVSOFT</div>
-  </header>
-
-  <div class="grid">
-<!-- IZQUIERDA (reemplazo) -->
-<div class="card">
-  <!-- fila de controles -->
-  <div class="busq" style="display:flex;gap:8px;align-items:center">
-    <div class="tier" id="tierBtns" style="display:flex;gap:6px">
-      <button data-tier="publico" class="active">Público</button>
-      <button data-tier="medio">Medio</button>
-      <button data-tier="mayoreo">Mayoreo</button>
-    </div>
-    <input id="buscador" type="text" placeholder="Escanea o escribe y Enter…" autofocus/>
-    <label class="small" style="display:flex;gap:6px;align-items:center">
-      <input id="autoAdd" type="checkbox" checked/> Auto-agregar
-    </label>
-    <button id="btnLimpiar" class="btn">Limpiar</button>
-  </div>
-
-  <!-- visor: logo + panel de estado -->
-  <div class="visor">
-    <div class="logoBox">
-      <img src="https://raw.githubusercontent.com/lizandrolumbreras/CIGARRO-INVENTARIO/main/logo_proveedora.webp" alt="La Proveedora">
-    </div>
-    <div class="status">
-      <h4 style="margin:0;color:#334">Panel</h4>
-      <div class="kv"><span>Fecha:</span><strong id="stFecha"></strong></div>
-      <div class="kv"><span># Venta:</span><strong id="stVenta">0</strong></div>
-      <div class="kv"><span>Caj/Usu:</span><strong id="stCajero">3 / gerardo</strong></div>
-      <div class="kv"><span>Resultados:</span><strong id="contador">0</strong></div>
-      <div>
-        <progress id="barraProgreso" value="0" max="100" style="width:100%"></progress>
-        <span id="estado" class="small"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- resultados de búsqueda -->
-  <div id="resultados" class="resultados"></div>
-</div>
-
-
-    <!-- DERECHA: carrito -->
-    <div class="card">
-      <h3 style="margin:0 0 8px">Carrito</h3>
-      <div style="overflow:auto;max-height:36vh">
-        <table><thead><tr>
-          <th>Código</th><th>Descripción</th><th>Cant</th><th>Precio</th><th>Importe</th><th>Acciones</th>
-        </tr></thead><tbody id="tbodyCarrito"></tbody></table>
-      </div>
-
-      <div class="totales" style="margin-top:10px">
-        <label class="small" style="display:flex;gap:6px;align-items:center">
-          <input id="incluyeIVA" type="checkbox" checked/> Precios incluyen IVA (16%)
-        </label>
-
-        <div class="totbox">
-          <div class="totline"><span>Subtotal (base)</span><strong id="lblSubtotal">$0.00</strong></div>
-          <div class="totline"><span>IVA 16%</span><strong id="lblIVA">$0.00</strong></div>
-          <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label class="small">Pago recibido</label><input id="inpPago" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"/></div>
-          <div><label class="small">Cambio</label><input id="inpCambio" type="text" disabled/></div>
-        </div>
-        <button class="btn" id="btnCobrar">💳 Cobrar e Imprimir</button>
-        <small id="msgCobro" style="display:block;color:#b00;margin-top:6px"></small>
-      </div>
-    </div>
-  </div>
-
-  <!-- Atajos tipo F1..F12 -->
-  <div class="footerbar">
-    <span><span class="k">F1</span> Consulta</span>
-    <span><span class="k">F2</span> Precios</span>
-    <span><span class="k">F4</span> Tickets</span>
-    <span><span class="k">F5</span> Cliente</span>
-    <span><span class="k">F9</span> Envia Espera</span>
-    <span><span class="k">F10</span> Trae Espera</span>
-    <span><span class="k">F12</span> Cobrar</span>
-  </div>
-</div>
-
-<!-- CONTENEDOR DEL TICKET -->
-<div id="ticket"></div>
-
-<script type="module">
-  const stFecha = document.querySelector('#stFecha');
-if (stFecha) stFecha.textContent = new Date().toLocaleDateString('es-MX');
-
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, query, where, getDocs, doc, runTransaction, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-const app = initializeApp({
-  apiKey:"AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-  authDomain:"inventariopv-643f1.firebaseapp.com",
-  projectId:"inventariopv-643f1",
-  storageBucket:"inventariopv-643f1.firebasestorage.app",
-  messagingSenderId:"96242533231",
-  appId:"1:96242533231:web:aae75a18fbaf9840529e9a"
-});
-const db = getFirestore(app);
-
-// helpers
-const el = s=>document.querySelector(s);
-const tierBtns = el('#tierBtns');
-const input = el('#buscador');
-const autoAdd = el('#autoAdd');
-const incluyeIVA = el('#incluyeIVA');
-const btnLimpiar = el('#btnLimpiar');
-const resultadosDiv = el('#resultados');
-const contador = el('#contador');
-const tbody = el('#tbodyCarrito');
-const lblSubtotal = el('#lblSubtotal');
-const lblIVA = el('#lblIVA');
-const lblTotal = el('#lblTotal');
-const inpPago = el('#inpPago');
-const inpCambio = el('#inpCambio');
-const msgCobro = el('#msgCobro');
-const stFecha = el('#stFecha'); stFecha.textContent = new Date().toLocaleDateString('es-MX');
-
-const IVA_RATE = 0.16;
-const state = { tipoPrecio:'publico', items:[] };
-const LSKEY='carritoPOS';
-const money = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-const num = v => (isNaN(Number(v))?0:Number(v));
-const round2 = x => Math.round((Number(x)+Number.EPSILON)*100)/100;
-
-// ── Tier
-tierBtns.addEventListener('click',e=>{
-  if(e.target.tagName!=='BUTTON') return;
-  tierBtns.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
-  e.target.classList.add('active');
-  state.tipoPrecio = e.target.dataset.tier;
-  state.items.forEach(it=>{
-    it.precioUnit = precioPorTier(it.__prod, state.tipoPrecio);
-    it.importe = round2(it.precioUnit*it.cant);
-  });
-  renderCarrito();
-});
-incluyeIVA.addEventListener('change', ()=>recalcular());
-
-function precioPorTier(p,tier){
-  const pub=num(p.precioPublico), med=num(p.medioMayoreo), may=num(p.mayoreo);
-  if(tier==='mayoreo') return may||med||pub;
-  if(tier==='medio') return med||pub;
-  return pub;
-}
-
-// ── Buscar (código o nombre)
-let resultados=[], debounce;
-btnLimpiar.onclick=()=>{ input.value=''; resultados=[]; resultadosDiv.innerHTML=''; contador.textContent='0'; input.focus(); };
-
-async function lookupCodigo(codigo){
-  const s = await getDocs(query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==',codigo)));
-  return s.docs.map(d=>({id:d.id,...d.data()}));
-}
-async function lookupNombre(termino){
-  const s = await getDocs(query(collection(db,'productos'), where('activo','==',true)));
-  const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
-  const out=[]; s.forEach(docu=>{
-    const p={id:docu.id,...docu.data()}, txt=(p.concepto||'').toLowerCase();
-    if(palabras.every(w=>txt.includes(w))) out.push(p);
-  });
-  return out;
-}
-async function buscar(termino){
-  resultadosDiv.innerHTML="⏳ Buscando…"; resultados=[];
-  if(/^\d{6,}$/.test(termino)){
-    resultados = await lookupCodigo(termino);
-    if(resultados.length){
-      mostrarResultados(resultados);
-      if(autoAdd.checked && resultados.length===1){
-        agregarAlCarrito(resultados[0],1);
-        limpiarResultados();
-      }
-      return;
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>POS – La Proveedora (Básico)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --azul:#00416A; --prim:#0c6cbd; --ok:#22aa22; --warn:#b36b00; --bg:#f3f6fb; --card:#ffffff; --sombra:rgba(0,0,0,.12);
     }
-  }
-  resultados = await lookupNombre(termino);
-  mostrarResultados(resultados);
-}
-function mostrarResultados(list){
-  resultadosDiv.innerHTML='';
-  if(!list.length){ resultadosDiv.textContent='❌ No se encontraron resultados'; contador.textContent='0'; return; }
-  list.slice(0,30).forEach(p=>{
-    const div=document.createElement('div'); div.className='producto';
-    div.innerHTML=`
-      <div class="info">
-        <b>${p.concepto||'(Sin nombre)'}</b><br>
-        <small>Código: ${p.codigoBarra||'—'}</small>
-        <div class="precios">
-          <span>Público: $${p.precioPublico?money(p.precioPublico):'—'}</span>
-          <span>Medio: $${p.medioMayoreo?money(p.medioMayoreo):'—'}</span>
-          <span>Mayoreo: $${p.mayoreo?money(p.mayoreo):'—'}</span>
+    *{box-sizing:border-box}
+    body{font-family:'Poppins',sans-serif;background:linear-gradient(to right,#00416A,#E4E5E6);margin:0;min-height:100vh;color:#111}
+    .wrap{max-width:1100px;margin:auto;padding:16px}
+    header{display:flex;align-items:center;justify-content:space-between;color:#fff;margin-bottom:12px}
+    header h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:14px}
+    .grid{display:grid;grid-template-columns:2fr 1.3fr;gap:14px}
+    .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+    .brand{font-weight:600;letter-spacing:.3px}
+    .tier{display:flex;gap:8px}
+    .tier button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+    .tier button.active{background:#0c6cbd;color:#fff;border-color:#0c6cbd}
+    .scan{display:flex;gap:8px}
+    input[type="text"], input[type="number"]{width:100%;padding:10px 12px;border:1px solid #d9dee6;border-radius:10px;font-size:14px}
+    .btn{background:#0c6cbd;color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    #lector{display:none;margin-top:8px}
+
+    .resultados{max-height:52vh;overflow:auto;padding-right:6px}
+    .producto{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;gap:10px}
+    .producto .info{font-size:13px}
+    .precios{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    .precio-publico{font-weight:600;color:#1a7c1a}
+    .precio-medio{color:#004080}
+    .precio-mayoreo{color:#b36b00}
+
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid #eef1f5;text-align:center;font-size:13px}
+    th{background:#f8fafc}
+    .acciones button{border:1px solid #dfe3ea;background:#fff;border-radius:8px;padding:4px 8px;margin:0 2px;cursor:pointer}
+
+    .totales{display:grid;grid-template-columns:1fr;gap:10px}
+    .totline{display:flex;justify-content:space-between}
+    .totbox{background:#f8fafc;border:1px dashed #cfd6e3;border-radius:12px;padding:10px}
+    .paygrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    /* Ticket print */
+    #ticket{display:none}
+    @media print{
+      body *{visibility:hidden}
+      #ticket,#ticket *{visibility:visible}
+      #ticket{position:absolute;left:0;top:0;width:250px;font-family:monospace;color:#000}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>POS Básico – La Proveedora</h1>
+      <div class="brand">PROVSOFT</div>
+    </header>
+
+    <div class="grid">
+      <!-- Columna izquierda: Buscador y resultados -->
+      <div class="card">
+        <div class="topbar">
+          <div class="tier" id="tierBtns">
+            <button data-tier="publico" class="active">Público</button>
+            <button data-tier="medio">Medio</button>
+            <button data-tier="mayoreo">Mayoreo</button>
+          </div>
+        </div>
+        <div class="scan">
+          <input type="text" id="buscador" placeholder="Escribe código o nombre… (Enter para buscar)" />
+          <button class="btn" id="btnScan">📷 Escanear</button>
+        </div>
+        <div id="lector"></div>
+        <div style="margin-top:6px;font-size:12px;color:#444">
+          <progress id="barraProgreso" value="0" max="100" style="width:180px"></progress>
+          <span id="estado"></span>
+          <span id="contador" style="float:right"></span>
+        </div>
+        <div id="resultados" class="resultados"></div>
+      </div>
+
+      <!-- Columna derecha: Carrito y cobro -->
+      <div class="card">
+        <h3 style="margin:0 0 8px 0">Carrito</h3>
+        <div style="overflow:auto;max-height:36vh">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Cant</th>
+                <th>Precio</th>
+                <th>Importe</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCarrito"></tbody>
+          </table>
+        </div>
+
+        <div class="totales" style="margin-top:10px">
+          <div class="totbox">
+            <div class="totline"><span>Subtotal</span><strong id="lblSubtotal">$0.00</strong></div>
+            <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
+          </div>
+
+          <div class="paygrid">
+            <div>
+              <label style="font-size:12px">Pago recibido</label>
+              <input type="number" id="inpPago" inputmode="decimal" min="0" step="0.01" placeholder="0.00" />
+            </div>
+            <div>
+              <label style="font-size:12px">Cambio</label>
+              <input type="text" id="inpCambio" disabled />
+            </div>
+          </div>
+
+          <button class="btn" id="btnCobrar">💳 Cobrar e Imprimir</button>
+          <small id="msgCobro" style="display:block;color:#b00;margin-top:6px"></small>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <input type="number" min="1" step="1" value="1" style="width:64px"/>
-        <button class="btn">+ Agregar</button>
-      </div>`;
-    const qty=div.querySelector('input');
-    div.querySelector('button').onclick=()=>{ agregarAlCarrito(p, Math.max(1,parseInt(qty.value||'1',10))); };
-    resultadosDiv.appendChild(div);
-  });
-  contador.textContent=String(list.length);
-}
-function limpiarResultados(){ resultados=[]; resultadosDiv.innerHTML=''; contador.textContent='0'; }
+    </div>
+  </div>
 
-// Enter / debounce
-input.addEventListener('keydown',e=>{
-  if(e.key==='Enter'){
-    const t=input.value.trim(); if(!t) return;
-    e.preventDefault(); buscar(t).then(()=>{ input.select(); input.focus(); });
-  }
-});
-input.addEventListener('input',()=>{
-  clearTimeout(debounce);
-  const t=input.value.trim();
-  if(!t){limpiarResultados();return;}
-  debounce=setTimeout(()=>buscar(t), /^\d{6,}$/.test(t)?120:400);
-});
+  <!-- Ticket para imprimir -->
+  <div id="ticket"></div>
 
-// ── Carrito
-function agregarAlCarrito(prod,cant){
-  const precio=precioPorTier(prod,state.tipoPrecio);
-  const ex=state.items.find(x=>x.id===prod.id);
-  if(ex){ ex.cant+=cant; ex.importe=round2(ex.cant*ex.precioUnit); }
-  else{
-    state.items.push({id:prod.id,codigo:prod.codigoBarra||'',desc:prod.concepto||'',cant,precioUnit:precio,importe:round2(precio*cant),__prod:prod});
-  }
-  renderCarrito(); save();
-  input.value=''; input.focus();
-}
-function renderCarrito(){
-  tbody.innerHTML='';
-  state.items.forEach((it,idx)=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`
-      <td>${it.codigo}</td>
-      <td style="text-align:left">${it.desc}</td>
-      <td>
-        <div style="display:flex;justify-content:center;gap:4px;align-items:center">
-          <button data-act="dec" data-i="${idx}">−</button>
-          <input type="number" min="1" step="1" value="${it.cant}" style="width:64px" data-i="${idx}"/>
-          <button data-act="inc" data-i="${idx}">+</button>
-        </div>
-      </td>
-      <td>$${money(it.precioUnit)}</td>
-      <td>$${money(it.importe)}</td>
-      <td class="acciones"><button data-act="del" data-i="${idx}">Eliminar</button></td>`;
-    tbody.appendChild(tr);
-  });
-  tbody.querySelectorAll('button').forEach(b=>b.onclick=e=>{
-    const i=Number(e.currentTarget.dataset.i), act=e.currentTarget.dataset.act;
-    if(act==='del') state.items.splice(i,1);
-    if(act==='inc'){state.items[i].cant++; state.items[i].importe=round2(state.items[i].cant*state.items[i].precioUnit);}
-    if(act==='dec'){state.items[i].cant=Math.max(1,state.items[i].cant-1); state.items[i].importe=round2(state.items[i].cant*state.items[i].precioUnit);}
-    renderCarrito(); save();
-  });
-  tbody.querySelectorAll('input[type=number]').forEach(n=>n.onchange=e=>{
-    const i=Number(e.currentTarget.dataset.i), v=Math.max(1,parseInt(e.currentTarget.value||'1',10));
-    state.items[i].cant=v; state.items[i].importe=round2(v*state.items[i].precioUnit);
-    renderCarrito(); save();
-  });
-  recalcular();
-}
+  <!-- Cámara -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
-// ── Totales con IVA
-function calcularTotales(){
-  const sumImportes = state.items.reduce((a,i)=>a+i.importe,0);
-  if(incluyeIVA.checked){
-    const base = round2(sumImportes / (1+IVA_RATE));
-    const iva  = round2(sumImportes - base);
-    const total= round2(sumImportes);
-    return {base, iva, total};
-  }else{
-    const base = round2(sumImportes);
-    const iva  = round2(base * IVA_RATE);
-    const total= round2(base + iva);
-    return {base, iva, total};
-  }
-}
-function recalcular(){
-  const {base, iva, total} = calcularTotales();
-  lblSubtotal.textContent = `$${money(base)}`;
-  lblIVA.textContent      = `$${money(iva)}`;
-  lblTotal.textContent    = `$${money(total)}`;
-  const pago = Number(inpPago.value||0);
-  const cambio = Math.max(0, round2(pago - total));
-  inpCambio.value = `$${money(cambio)}`;
-  msgCobro.textContent = '';
-}
-inpPago.oninput=recalcular;
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, orderBy, doc, runTransaction, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-function save(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio,items:state.items,incluyeIVA:incluyeIVA.checked})); }
-(function load(){
-  try{ const raw=JSON.parse(localStorage.getItem(LSKEY)||'null');
-    if(raw){ state.tipoPrecio=raw.tipoPrecio||'publico'; state.items=(raw.items||[]).map(x=>({...x})); incluyeIVA.checked = (raw.incluyeIVA!==false);
-      tierBtns.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.tier===state.tipoPrecio));
+    // === Config Firebase ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.firebasestorage.app",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    // === Estado POS ===
+    const state = {
+      tipoPrecio: 'publico',
+      items: [] // {id, codigo, desc, cant, precioUnit, importe}
+    };
+    const tbody = document.getElementById('tbodyCarrito');
+    const lblSubtotal = document.getElementById('lblSubtotal');
+    const lblTotal = document.getElementById('lblTotal');
+    const inpPago = document.getElementById('inpPago');
+    const inpCambio = document.getElementById('inpCambio');
+    const msgCobro = document.getElementById('msgCobro');
+
+    function money(n){
+      const x = Number(n||0);
+      return x.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+
+    // === Tier de precio ===
+    const tierBtns = document.getElementById('tierBtns');
+    tierBtns.addEventListener('click',(e)=>{
+      if(e.target.tagName!=='BUTTON') return;
+      tierBtns.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+      e.target.classList.add('active');
+      state.tipoPrecio = e.target.dataset.tier;
+      // Revalorizar precios del carrito
+      state.items.forEach(it=>{
+        const prod = it.__prod;
+        it.precioUnit = precioPorTier(prod, state.tipoPrecio);
+        it.importe = round2(it.precioUnit * it.cant);
+      });
       renderCarrito();
-    }
-  }catch{}
-})();
-
-// ── Cobro + guardar + imprimir
-el('#btnCobrar').onclick=cobrar;
-async function cobrar(){
-  const {base, iva, total} = calcularTotales();
-  const pago=Number(inpPago.value||0);
-  if(!state.items.length){ msgCobro.textContent='Carrito vacío'; return; }
-  if(pago<total){ msgCobro.textContent='El pago es menor que el total'; return; }
-
-  const consecutivoRef=doc(db,'consecutivos','ventas');
-  const ventaId=crypto.randomUUID(); const ventaRef=doc(db,'ventas',ventaId);
-
-  let folioStr='V-000001';
-  await runTransaction(db, async tx=>{
-    const consSnap=await tx.get(consecutivoRef);
-    const n=(consSnap.exists()?(consSnap.data().folioActual||0):0)+1;
-    tx.set(consecutivoRef,{folioActual:n});
-    folioStr=`V-${String(n).padStart(6,'0')}`;
-    tx.set(ventaRef,{
-      folio:folioStr, fecha:serverTimestamp(), tipoPrecio:state.tipoPrecio,
-      preciosIncluyenIVA: incluyeIVA.checked,
-      subtotal:base, iva:iva, total:total,
-      pago:round2(pago), cambio:round2(pago-total),
-      items:state.items.map(i=>({codigo:i.codigo,descripcion:i.desc,cant:i.cant,precioUnit:i.precioUnit,importe:i.importe}))
     });
-  });
 
-  const vSnap=await getDoc(ventaRef); const venta=vSnap.data();
-  imprimirTicket(venta);
+    function precioPorTier(p, tier){
+      const pub = num(p.precioPublico);
+      const med = num(p.medioMayoreo);
+      const may = num(p.mayoreo);
+      if(tier==='mayoreo') return may || med || pub;
+      if(tier==='medio')   return med || pub;
+      return pub;
+    }
+    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
+    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
 
-  // actualizar panel #venta (visual)
-  const nVenta = Number(el('#stVenta').textContent||'0')+1;
-  el('#stVenta').textContent = String(nVenta);
+    // === Buscador (basado en tu código) ===
+    const input = document.getElementById('buscador');
+    const resultadosDiv = document.getElementById('resultados');
+    const barraProgreso = document.getElementById('barraProgreso');
+    const estado = document.getElementById('estado');
+    const contador = document.getElementById('contador');
 
-  state.items=[]; renderCarrito(); save();
-  input.value=''; inpPago.value=''; recalcular(); input.focus();
-}
+    let resultados = [];
+    let pagina = 0;
+    const porPagina = 30;
 
-// ── Ticket 58mm con desglose IVA
-function imprimirTicket(v){
-  const t=document.getElementById('ticket');
-  const L = s=>`<div style="white-space:pre">${s||''}</div>`;
-  const m = x=>Number(x||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const line='------------------------------'.slice(0,30);
+    async function buscarProductos(termino){
+      resultadosDiv.innerHTML = "⏳ Buscando...";
+      barraProgreso.value = 0; estado.textContent = ""; resultados = [];
 
-  const hdr=[
-    'LA PROVEEDORA',
-    'BRAVO 244 CENTRO ALLENDE',
-    `FOLIO: ${v.folio||''}`,
-    `FECHA: ${new Date().toLocaleString('es-MX')}`
-  ].map(L).join('');
+      // 1) Si parece código de barras exacto
+      if(/^\d+$/.test(termino)){
+        const q1 = query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==', termino));
+        const s1 = await getDocs(q1);
+        resultados = s1.docs.map(d=>({id:d.id, ...d.data()}));
+        if(resultados.length>0){ mostrarPagina(0); return; }
+      }
 
-  const det=(v.items||[]).map(i=>{
-    const d=(i.descripcion||'').slice(0,24);
-    const izq=`${i.cant}x ${d}`.padEnd(24,' ');
-    const der=m(i.importe).padStart(8,' ');
-    return L(izq+der);
-  }).join('');
+      // 2) Búsqueda por concepto (cliente-side)
+      const q2 = query(collection(db,'productos'), where('activo','==',true), orderBy('concepto'));
+      const s2 = await getDocs(q2);
+      const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
+      s2.forEach(docu=>{
+        const p = {id:docu.id, ...docu.data()};
+        const texto = (p.concepto||'').toLowerCase();
+        if(palabras.every(w=>texto.includes(w))) resultados.push(p);
+      });
+      if(resultados.length===0){
+        resultadosDiv.innerHTML = '❌ No se encontraron resultados'; contador.textContent='';
+      } else { mostrarPagina(0); }
+    }
 
-  const tot = [
-    L(line),
-    L(`BASE:             ${m(v.subtotal).padStart(10,' ')}`),
-    L(`IVA 16%:          ${m(v.iva).padStart(10,' ')}`),
-    L(`TOTAL:            ${m(v.total).padStart(10,' ')}`),
-    L(line),
-    L(`PAGO:             ${m(v.pago).padStart(10,' ')}`),
-    L(`CAMBIO:           ${m(v.cambio).padStart(10,' ')}`)
-  ].join('');
+    function mostrarPagina(n){
+      pagina = n; resultadosDiv.innerHTML = '';
+      const inicio = pagina*porPagina, fin = inicio+porPagina;
+      const lista = resultados.slice(inicio, fin);
 
-  t.innerHTML = hdr + L(line) + det + tot + L('¡GRACIAS POR SU COMPRA!');
-  setTimeout(()=>window.print(), 80);
-}
-</script>
-</body></html>
+      lista.forEach(p=>{
+        const div = document.createElement('div');
+        div.className = 'producto';
+        const preciosHtml = `
+          <div class="precios">
+            <span class="precio-publico">Público: $${p.precioPublico? money(p.precioPublico):'—'}</span>
+            <span class="precio-medio">Medio: $${p.medioMayoreo? money(p.medioMayoreo):'—'}</span>
+            <span class="precio-mayoreo">Mayoreo: $${p.mayoreo? money(p.mayoreo):'—'}</span>
+          </div>`;
+        div.innerHTML = `
+          <div class="info">
+            <b>${p.concepto||'(Sin nombre)'}</b><br>
+            <small>Código: ${p.codigoBarra||'—'}</small>
+            ${preciosHtml}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" min="1" step="1" value="1" style="width:64px" />
+            <button class="btn">+ Agregar</button>
+          </div>`;
+
+        const qty = div.querySelector('input');
+        const btn = div.querySelector('button');
+        btn.addEventListener('click',()=>{
+          const cant = Math.max(1, parseInt(qty.value||'1',10));
+          agregarAlCarritoDesdeProducto(p, cant);
+        });
+        resultadosDiv.appendChild(div);
+      });
+
+      contador.textContent = `Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.ceil(resultados.length/porPagina)}`;
+    }
+
+    let debounceTimer;
+    input.addEventListener('input',()=>{
+      clearTimeout(debounceTimer);
+      const t = input.value.trim();
+      if(!t){ resultadosDiv.innerHTML=''; contador.textContent=''; return; }
+      debounceTimer = setTimeout(()=>buscarProductos(t), 500);
+    });
+    input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ const t=input.value.trim(); if(t) buscarProductos(t); }});
+
+    // === Escáner ===
+    const divLector = document.getElementById('lector');
+    document.getElementById('btnScan').addEventListener('click', iniciarEscaneo);
+    function iniciarEscaneo(){
+      divLector.style.display='block';
+      const lector = new Html5Qrcode('lector');
+      lector.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        async codigo => {
+          input.value = codigo; await buscarProductos(codigo);
+          lector.stop(); divLector.style.display='none';
+        },
+        err => console.log('scan err', err)
+      ).catch(err=>{ console.error('cam error',err); });
+    }
+
+    // === Carrito ===
+    function agregarAlCarritoDesdeProducto(prod, cant){
+      const precio = precioPorTier(prod, state.tipoPrecio);
+      const existente = state.items.find(x=>x.id===prod.id);
+      if(existente){
+        existente.cant += cant;
+        existente.importe = round2(existente.cant * existente.precioUnit);
+      } else {
+        state.items.push({
+          id: prod.id,
+          codigo: prod.codigoBarra||'',
+          desc: prod.concepto||'',
+          cant: cant,
+          precioUnit: precio,
+          importe: round2(precio*cant),
+          __prod: prod
+        });
+      }
+      renderCarrito();
+      saveLocal();
+    }
+
+    function renderCarrito(){
+      tbody.innerHTML='';
+      state.items.forEach((it,idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${it.codigo}</td>
+          <td style="text-align:left">${it.desc}</td>
+          <td>
+            <div style="display:flex;justify-content:center;gap:4px;align-items:center">
+              <button data-act="dec" data-i="${idx}">−</button>
+              <input type="number" min="1" step="1" value="${it.cant}" style="width:64px" data-i="${idx}"/>
+              <button data-act="inc" data-i="${idx}">+</button>
+            </div>
+          </td>
+          <td>$${money(it.precioUnit)}</td>
+          <td>$${money(it.importe)}</td>
+          <td class="acciones">
+            <button data-act="del" data-i="${idx}">Eliminar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+      // Delegación
+      tbody.querySelectorAll('button').forEach(b=>{
+        b.addEventListener('click', (e)=>{
+          const i = Number(e.currentTarget.dataset.i);
+          const act = e.currentTarget.dataset.act;
+          if(act==='del'){ state.items.splice(i,1); }
+          if(act==='inc'){ state.items[i].cant++; state.items[i].importe = round2(state.items[i].cant*state.items[i].precioUnit); }
+          if(act==='dec'){ state.items[i].cant = Math.max(1, state.items[i].cant-1); state.items[i].importe = round2(state.items[i].cant*state.items[i].precioUnit); }
+          renderCarrito(); saveLocal();
+        });
+      });
+      tbody.querySelectorAll('input[type="number"]').forEach(inp=>{
+        inp.addEventListener('change',(e)=>{
+          const i = Number(e.currentTarget.dataset.i);
+          const v = Math.max(1, parseInt(e.currentTarget.value||'1',10));
+          state.items[i].cant = v;
+          state.items[i].importe = round2(v*state.items[i].precioUnit);
+          renderCarrito(); saveLocal();
+        });
+      });
+      recalcular();
+    }
+
+    function recalcular(){
+      const subtotal = state.items.reduce((a,i)=>a+i.importe,0);
+      lblSubtotal.textContent = `$${money(subtotal)}`;
+      lblTotal.textContent = `$${money(subtotal)}`;
+      const pago = Number(inpPago.value||0);
+      const cambio = Math.max(0, round2(pago - subtotal));
+      inpCambio.value = `$${money(cambio)}`;
+      msgCobro.textContent = '';
+    }
+
+    inpPago.addEventListener('input', recalcular);
+
+    // Persistencia local
+    const LSKEY='carritoPOS';
+    function saveLocal(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio, items:state.items})); }
+    function loadLocal(){
+      try{
+        const raw = JSON.parse(localStorage.getItem(LSKEY)||'null');
+        if(raw){ state.tipoPrecio = raw.tipoPrecio||'publico'; state.items = (raw.items||[]).map(x=>({...x}));
+          // activar botón del tier actual
+          tierBtns.querySelectorAll('button').forEach(b=>{
+            b.classList.toggle('active', b.dataset.tier===state.tipoPrecio);
+          });
+          renderCarrito();
+        }
+      }catch(e){ /* ignore */ }
+    }
+    loadLocal();
+
+    // === Cobro ===
+    document.getElementById('btnCobrar').addEventListener('click', cobrarVenta);
+
+    async function cobrarVenta(){
+      const total = state.items.reduce((a,i)=>a+i.importe,0);
+      const pago = Number(inpPago.value||0);
+      if(state.items.length===0){ msgCobro.textContent='Carrito vacío'; return; }
+      if(pago < total){ msgCobro.textContent='El pago es menor que el total'; return; }
+
+      const consecutivoRef = doc(db,'consecutivos','ventas');
+      const ventaId = crypto.randomUUID();
+      const ventaRef = doc(db,'ventas', ventaId);
+
+      await runTransaction(db, async (tx)=>{
+        const consSnap = await tx.get(consecutivoRef);
+        const n = (consSnap.exists()? (consSnap.data().folioActual||0):0) + 1;
+        tx.set(consecutivoRef,{folioActual:n});
+        const folioStr = `V-${String(n).padStart(6,'0')}`;
+        const payload = {
+          folio: folioStr,
+          fecha: serverTimestamp(),
+          tipoPrecio: state.tipoPrecio,
+          subtotal: round2(total),
+          impuestos: 0,
+          total: round2(total),
+          pago: round2(pago),
+          cambio: round2(pago-total),
+          items: state.items.map(i=>({ codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe }))
+        };
+        tx.set(ventaRef, payload);
+      });
+
+      // Traer la venta guardada para ticket (folio)
+      const vSnap = await getDoc(ventaRef);
+      const venta = vSnap.data();
+      imprimirTicket(venta);
+
+      // limpiar
+      state.items=[]; renderCarrito(); saveLocal();
+      input.value=''; inpPago.value=''; recalcular();
+    }
+
+    // === Ticket ===
+    function imprimirTicket(venta){
+      const el = document.getElementById('ticket');
+      const line = (t='') => `<div style="white-space:pre">${t}</div>`;
+      const hdr = [
+        'LA PROVEEDORA',
+        'BRAVO 244 CENTRO ALLENDE',
+        `FOLIO: ${venta.folio}`,
+        `FECHA: ${new Date().toLocaleString('es-MX')}`
+      ].map(line).join('');
+      const det = (venta.items||[]).map(i=>{
+        const desc = (i.descripcion||'').slice(0,24);
+        const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
+        const der = money(i.importe).padStart(8,' ');
+        return line(izq+der);
+      }).join('');
+      const tot = [
+        line('------------------------------'),
+        line(`TOTAL:            ${money(venta.total).padStart(10,' ')}`),
+        line(`PAGO:             ${money(venta.pago).padStart(10,' ')}`),
+        line(`CAMBIO:           ${money(venta.cambio).padStart(10,' ')}`)
+      ].join('');
+      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
+      window.print();
+    }
+  </script>
+</body>
+</html>
