@@ -44,13 +44,6 @@
     .totline{display:flex;justify-content:space-between}
     .totbox{background:#f8fafc;border:1px dashed #cfd6e3;border-radius:12px;padding:10px}
     .paygrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    <div style="margin-top:8px">
-  <label style="font-size:12px">Método de pago</label>
-  <select id="selMetodo" style="width:100%;padding:10px 12px;border:1px solid #d9dee6;border-radius:10px">
-    <option value="efectivo">Efectivo</option>
-    <option value="tarjeta">Tarjeta</option>
-  </select>
-</div>
 
     /* Ticket print */
     #ticket{display:none}
@@ -142,33 +135,6 @@
       <div id="corteContenido" style="font-size:14px"></div>
     </div>
   </div>
-  <!-- Caja: Apertura y Corte -->
-<div class="wrap" style="margin-top:10px">
-  <div class="card">
-    <h3 style="margin:0 0 10px 0">Caja</h3>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:end">
-      <div>
-        <label style="font-size:12px">Caja</label>
-        <input id="inpCaja" type="text" value="CAJA-1" disabled />
-      </div>
-      <div>
-        <label style="font-size:12px">Monto inicial (apertura)</label>
-        <input id="inpMontoInicial" type="number" min="0" step="0.01" placeholder="0.00" />
-      </div>
-      <div>
-        <button class="btn" id="btnApertura">🔓 Abrir caja</button>
-      </div>
-    </div>
-
-    <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">
-      <button class="btn" id="btnCorte" style="background:#b36b00">🧮 Corte de caja</button>
-      <button class="btn" id="btnImprimirCorte" style="background:#555">🖨️ Imprimir corte</button>
-      <small id="msgCaja" style="color:#b00"></small>
-    </div>
-
-    <div id="resumenCorte" style="margin-top:10px;font-size:14px"></div>
-  </div>
-</div>
 
   <!-- Ticket para imprimir -->
   <div id="ticket"></div>
@@ -184,9 +150,7 @@
     const firebaseConfig = { apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM", authDomain: "inventariopv-643f1.firebaseapp.com", projectId: "inventariopv-643f1", storageBucket: "inventariopv-643f1.firebasestorage.app", messagingSenderId: "96242533231", appId: "1:96242533231:web:aae75a18fbaf9840529e9a" };
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
-    // === Caja ===
-    const CAJA_ID = 'CAJA-1';
-    const LS_APERTURA = `aperturaActiva_${CAJA_ID}`;
+
     const state = { tipoPrecio: 'publico', items: [] };
     const tbody=document.getElementById('tbodyCarrito');
     const lblSubtotal=document.getElementById('lblSubtotal');
@@ -195,15 +159,6 @@
     const inpPago=document.getElementById('inpPago');
     const inpCambio=document.getElementById('inpCambio');
     const msgCobro=document.getElementById('msgCobro');
-    // Caja UI
-const inpMontoInicial = document.getElementById('inpMontoInicial');
-const btnApertura = document.getElementById('btnApertura');
-const btnCorte = document.getElementById('btnCorte');
-const btnImprimirCorte = document.getElementById('btnImprimirCorte');
-const msgCaja = document.getElementById('msgCaja');
-const resumenCorte = document.getElementById('resumenCorte');
-const selMetodo = document.getElementById('selMetodo');
-
 
     function money(n){return Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}
     function round2(x){return Math.round((x+Number.EPSILON)*100)/100;}
@@ -240,7 +195,6 @@ const selMetodo = document.getElementById('selMetodo');
       const iva=round2(subtotal*0.16);
       const total=round2(subtotal+iva);
       const pago=Number(inpPago.value||0);
-      const metodoPago = selMetodo.value || 'efectivo';
       if(state.items.length===0){msgCobro.textContent='Carrito vacío';return;}
       if(pago<total){msgCobro.textContent='Pago insuficiente';return;}
 
@@ -253,19 +207,9 @@ const selMetodo = document.getElementById('selMetodo');
         const n=(cons.exists()?(cons.data().folioActual||0):0)+1;
         tx.set(consecutivoRef,{folioActual:n});
         const folioStr=`V-${String(n).padStart(6,'0')}`;
-const payload = {
-  folio: folioStr,
-  fecha: serverTimestamp(),
-  caja: CAJA_ID,
-  metodoPago,
-  tipoPrecio: state.tipoPrecio,
-  subtotal: round2(subtotal),
-  iva,
-  total,
-  pago,
-  cambio: round2(pago-total),
-  items: state.items.map(i=>({codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe}))
-};
+        const payload={folio:folioStr,fecha:serverTimestamp(),tipoPrecio:state.tipoPrecio,subtotal:round2(subtotal),iva,total,pago,cambio:round2(pago-total),items:state.items.map(i=>({codigo:i.codigo,descripcion:i.desc,cant:i.cant,precioUnit:i.precioUnit,importe:i.importe}))};
+        tx.set(ventaRef,payload);
+      });
       const snap=await getDoc(ventaRef); lastVenta=snap.data();
       imprimirTicket(lastVenta);
       state.items=[];renderCarrito();inpPago.value='';recalcular();
@@ -276,7 +220,7 @@ const payload = {
       const line=t=>`<div style="white-space:pre">${t}</div>`;
       const hdr=['LA PROVEEDORA','BRAVO 244 CENTRO ALLENDE',`FOLIO: ${v.folio}`,`FECHA: ${new Date().toLocaleString('es-MX')}`].map(line).join('');
       const det=(v.items||[]).map(i=>{const desc=(i.descripcion||'').slice(0,20);return line(`${i.cant}x ${desc}`.padEnd(24,' ')+money(i.importe).padStart(8,' '));}).join('');
-      const tot=[line('------------------------------'),line(`SUBTOTAL: ${money(v.subtotal)}`),line(`IVA: ${money(v.iva)}`),line(`TOTAL: ${money(v.total)}`),line(`PAGO (${v.metodoPago?.toUpperCase()||''}): ${money(v.pago)}`),line(`CAMBIO: ${money(v.cambio)}`)].join('');
+      const tot=[line('------------------------------'),line(`SUBTOTAL: ${money(v.subtotal)}`),line(`IVA: ${money(v.iva)}`),line(`TOTAL: ${money(v.total)}`),line(`PAGO: ${money(v.pago)}`),line(`CAMBIO: ${money(v.cambio)}`)].join('');
       el.innerHTML=hdr+line('------------------------------')+det+tot+line('¡GRACIAS!');
       window.print();
     }
@@ -293,104 +237,6 @@ const payload = {
       <p><b>Total vendido:</b> $${money(totalVentas)}</p>`;
       document.getElementById('corteBox').style.display='block';
     }
-      // === Apertura de caja ===
-btnApertura.addEventListener('click', abrirCaja);
-async function abrirCaja(){
-  try{
-    const monto = Number(inpMontoInicial.value||0);
-    if(monto<0){ msgCaja.textContent='Monto inválido'; return; }
-    const apRef = doc(db, 'aperturas_caja', crypto.randomUUID());
-    await setDoc(apRef, { caja: CAJA_ID, fechaApertura: serverTimestamp(), montoInicial: round2(monto), abierta: true });
-    localStorage.setItem(LS_APERTURA, apRef.id);
-    msgCaja.textContent = 'Caja abierta';
-    btnApertura.disabled = true;
-  }catch(e){ msgCaja.textContent='Error al abrir caja'; console.error(e); }
-}
-
-// Restaurar estado apertura en carga
-(function(){
-  const apId = localStorage.getItem(LS_APERTURA);
-  if(apId){ btnApertura.disabled = true; }
-})();
-// === Corte de caja ===
-btnCorte.addEventListener('click', corteCaja);
-btnImprimirCorte.addEventListener('click', ()=>{
-  if(_ultimoCorte) imprimirCorte(_ultimoCorte); else msgCaja.textContent='Primero genera el corte.';
-});
-
-let _ultimoCorte=null;
-async function corteCaja(){
-  msgCaja.textContent='';
-  const apId = localStorage.getItem(LS_APERTURA);
-  if(!apId){ msgCaja.textContent='No hay apertura activa.'; return; }
-  try{
-    const apSnap = await getDoc(doc(db,'aperturas_caja', apId));
-    if(!apSnap.exists()){ msgCaja.textContent='Apertura no encontrada'; return; }
-    const ap = apSnap.data();
-
-    // Ventas desde fechaApertura para esta CAJA
-    const qVentas = query(
-      collection(db,'ventas'),
-      where('caja','==', CAJA_ID),
-      where('fecha','>=', ap.fechaApertura)
-    );
-    const sVentas = await getDocs(qVentas);
-
-    let tickets=0, total=0, efectivo=0, tarjeta=0;
-    sVentas.forEach(d=>{
-      const v = d.data(); tickets++; total += Number(v.total||0);
-      if(v.metodoPago==='efectivo') efectivo += Number(v.total||0); else tarjeta += Number(v.total||0);
-    });
-    total = round2(total); efectivo = round2(efectivo); tarjeta = round2(tarjeta);
-    const montoInicial = Number(ap.montoInicial||0);
-    const efectivoTeorico = round2(montoInicial + efectivo);
-
-    const corte = {
-      caja: CAJA_ID,
-      aperturaId: apId,
-      fechaCierre: new Date().toISOString(),
-      montoInicial, tickets,
-      totalVentas: total, efectivo, tarjeta,
-      efectivoTeorico
-    };
-    _ultimoCorte = corte;
-
-    // Guardar corte y cerrar apertura
-    const corteRef = doc(db,'cortes_caja', crypto.randomUUID());
-    await setDoc(corteRef, { ...corte, fechaCierreFS: serverTimestamp() });
-    await setDoc(doc(db,'aperturas_caja', apId), { ...ap, abierta:false, fechaCierre: serverTimestamp() });
-    localStorage.removeItem(LS_APERTURA);
-    btnApertura.disabled = false;
-
-    // Mostrar resumen en pantalla
-    resumenCorte.innerHTML = `
-      <div><b>Caja:</b> ${corte.caja}</div>
-      <div><b>Tickets:</b> ${tickets}</div>
-      <div><b>Monto inicial:</b> $${money(montoInicial)}</div>
-      <div><b>Total ventas:</b> $${money(total)}</div>
-      <div><b>Efectivo:</b> $${money(efectivo)}</div>
-      <div><b>Tarjeta:</b> $${money(tarjeta)}</div>
-      <div><b>Efectivo teórico (físico esperado):</b> $${money(efectivoTeorico)}</div>
-    `;
-  }catch(e){ console.error(e); msgCaja.textContent='Error al generar corte.'; }
-}
-
-function imprimirCorte(c){
-  const el = document.getElementById('ticket');
-  const line=t=>`<div style="white-space:pre">${t}</div>`;
-  const hdr=['LA PROVEEDORA','CORTE DE CAJA',`CAJA: ${c.caja}`, `FECHA: ${new Date().toLocaleString('es-MX')}`].map(line).join('');
-  const det=[
-    line('--------------------------------'),
-    line(`Tickets:         ${c.tickets}`),
-    line(`Monto inicial:   $${money(c.montoInicial)}`),
-    line(`Ventas totales:  $${money(c.totalVentas)}`),
-    line(`- Efectivo:      $${money(c.efectivo)}`),
-    line(`- Tarjeta:       $${money(c.tarjeta)}`),
-    line(`EFECTIVO ESP.:   $${money(c.efectivoTeorico)}`)
-  ].join('');
-  el.innerHTML = hdr + line('--------------------------------') + det + line('Fin de corte');
-  window.print();
-}
   </script>
 </body>
 </html>
