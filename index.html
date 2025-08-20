@@ -21,9 +21,17 @@ input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px soli
 .producto .info{font-size:13px}.precios{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eef1f5;text-align:center;font-size:13px}th{background:#f8fafc}
 .acciones button{border:1px solid #dfe3ea;background:#fff;border-radius:8px;padding:4px 8px;margin:0 2px;cursor:pointer}
-.totales{display:grid;gap:10px}.totline{display:flex;justify-content:space-between}
+.totales{display:grid;gap:8px}.totline{display:flex;justify-content:space-between}
 .totbox{background:#f8fafc;border:1px dashed #cfd6e3;border-radius:12px;padding:10px}
-#ticket{display:none}@media print{body *{visibility:hidden}#ticket,#ticket *{visibility:visible}#ticket{position:absolute;left:0;top:0;width:250px;font-family:monospace;color:#000}}
+
+#ticket{display:none}
+@media print{
+  body *{visibility:hidden}
+  #ticket,#ticket *{visibility:visible}
+  /* Ancho 58mm (~230px), con padding, para evitar página en blanco */
+  #ticket{display:block;position:absolute;left:0;top:0;width:230px;padding:6px 8px;
+          font-family:monospace;line-height:1.2;color:#000;background:#fff}
+}
 </style>
 </head><body>
 <div class="wrap">
@@ -38,7 +46,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px so
         <button data-tier="mayoreo">Mayoreo</button>
       </div>
       <div class="scan">
-        <input id="buscador" type="text" placeholder="Escanea o escribe y presiona Enter…" autofocus/>
+        <input id="buscador" type="text" placeholder="Escanea o escribe y Enter…" autofocus/>
         <label class="small" style="display:flex;gap:6px;align-items:center">
           <input id="autoAdd" type="checkbox" checked/> Auto-agregar por código
         </label>
@@ -61,10 +69,18 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px so
       </div>
 
       <div class="totales" style="margin-top:10px">
+        <div style="display:flex;gap:12px;align-items:center">
+          <label class="small" style="display:flex;gap:6px;align-items:center">
+            <input id="incluyeIVA" type="checkbox" checked/> Precios incluyen IVA (16%)
+          </label>
+        </div>
+
         <div class="totbox">
-          <div class="totline"><span>Subtotal</span><strong id="lblSubtotal">$0.00</strong></div>
+          <div class="totline"><span>Subtotal (base)</span><strong id="lblSubtotal">$0.00</strong></div>
+          <div class="totline"><span>IVA 16%</span><strong id="lblIVA">$0.00</strong></div>
           <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
         </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div><label class="small">Pago recibido</label><input id="inpPago" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00"/></div>
           <div><label class="small">Cambio</label><input id="inpCambio" type="text" disabled/></div>
@@ -76,6 +92,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px so
   </div>
 </div>
 
+<!-- CONTENEDOR DEL TICKET -->
 <div id="ticket"></div>
 
 <script type="module">
@@ -92,23 +109,24 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-// ---- Estado/UI
+// ---- Estado/UI helpers
 const el = s=>document.querySelector(s);
 const tierBtns = el('#tierBtns');
 const input = el('#buscador');
 const autoAdd = el('#autoAdd');
+const incluyeIVA = el('#incluyeIVA');
 const btnLimpiar = el('#btnLimpiar');
 const resultadosDiv = el('#resultados');
-const barra = el('#barraProgreso');
-const estado = el('#estado');
 const contador = el('#contador');
 const tbody = el('#tbodyCarrito');
 const lblSubtotal = el('#lblSubtotal');
+const lblIVA = el('#lblIVA');
 const lblTotal = el('#lblTotal');
 const inpPago = el('#inpPago');
 const inpCambio = el('#inpCambio');
 const msgCobro = el('#msgCobro');
 
+const IVA_RATE = 0.16;
 const state = { tipoPrecio:'publico', items:[] };
 const LSKEY='carritoPOS';
 const money = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -127,6 +145,8 @@ tierBtns.addEventListener('click',e=>{
   });
   renderCarrito();
 });
+incluyeIVA.addEventListener('change', ()=>recalcular());
+
 function precioPorTier(p,tier){
   const pub=num(p.precioPublico), med=num(p.medioMayoreo), may=num(p.mayoreo);
   if(tier==='mayoreo') return may||med||pub;
@@ -136,14 +156,13 @@ function precioPorTier(p,tier){
 
 // ---- Buscar
 let resultados=[], pagina=0, porPagina=30, debounce;
-btnLimpiar.onclick=()=>{ input.value=''; resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; estado.textContent=''; barra.value=0; input.focus(); };
+btnLimpiar.onclick=()=>{ input.value=''; resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; input.focus(); };
 
 async function lookupCodigo(codigo){
   const s = await getDocs(query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==',codigo)));
   return s.docs.map(d=>({id:d.id,...d.data()}));
 }
 async function lookupNombre(termino){
-  // Trae lote y filtra en cliente (evita índices de orderBy)
   const s = await getDocs(query(collection(db,'productos'), where('activo','==',true)));
   const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
   const out=[]; s.forEach(docu=>{
@@ -152,34 +171,26 @@ async function lookupNombre(termino){
   });
   return out;
 }
-
 async function buscar(termino){
-  resultadosDiv.innerHTML="⏳ Buscando…"; estado.textContent=''; barra.value=0; resultados=[];
-  // Primero exacto por código si son dígitos
+  resultadosDiv.innerHTML="⏳ Buscando…"; resultados=[];
   if(/^\d{6,}$/.test(termino)){
     resultados = await lookupCodigo(termino);
     if(resultados.length){
-      mostrarPagina(0);
-      // Auto-agrega directo si está activo y sólo hay 1
+      mostrarResultados(resultados);
       if(autoAdd.checked && resultados.length===1){
-        agregar(resultados[0],1);
+        agregarAlCarrito(resultados[0],1);
         limpiarResultados();
       }
       return;
     }
   }
-  // Si no hubo por código, intenta por nombre
   resultados = await lookupNombre(termino);
-  if(resultados.length===0){
-    resultadosDiv.innerHTML='❌ No se encontraron resultados'; contador.textContent='';
-  }else{
-    mostrarPagina(0);
-  }
+  mostrarResultados(resultados);
 }
-function mostrarPagina(n){
-  pagina=n; resultadosDiv.innerHTML='';
-  const ini=pagina*porPagina, fin=ini+porPagina;
-  resultados.slice(ini,fin).forEach(p=>{
+function mostrarResultados(list){
+  resultadosDiv.innerHTML='';
+  if(!list.length){ resultadosDiv.textContent='❌ No se encontraron resultados'; contador.textContent=''; return; }
+  list.slice(0,porPagina).forEach(p=>{
     const div=document.createElement('div'); div.className='producto';
     div.innerHTML=`
       <div class="info">
@@ -195,16 +206,15 @@ function mostrarPagina(n){
         <input type="number" min="1" step="1" value="1" style="width:64px"/>
         <button class="btn">+ Agregar</button>
       </div>`;
-    const qty=div.querySelector('input'); div.querySelector('button').onclick=()=>agregar(p, Math.max(1,parseInt(qty.value||'1',10)));
+    const qty=div.querySelector('input');
+    div.querySelector('button').onclick=()=>{ agregarAlCarrito(p, Math.max(1,parseInt(qty.value||'1',10))); };
     resultadosDiv.appendChild(div);
   });
-  contador.textContent=`Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.ceil(resultados.length/porPagina)}`;
+  contador.textContent=`Resultados: ${list.length}`;
 }
-function limpiarResultados(){ resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; estado.textContent=''; barra.value=0; }
+function limpiarResultados(){ resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; }
 
-// Escucha del lector físico:
-// - Muchos lectores envían Enter al final -> procesamos en Enter
-// - Si no hay Enter, usamos debounce corto cuando son puros dígitos (≥6)
+// Lector: Enter o debounce por dígitos
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     const t=input.value.trim(); if(!t) return;
@@ -215,15 +225,12 @@ input.addEventListener('input',()=>{
   clearTimeout(debounce);
   const t=input.value.trim();
   if(!t){limpiarResultados();return;}
-  if(/^\d{6,}$/.test(t)){
-    debounce=setTimeout(()=>buscar(t),100); // pequeño margen para que “entre completo”
-  }else{
-    debounce=setTimeout(()=>buscar(t),400);
-  }
+  if(/^\d{6,}$/.test(t)){ debounce=setTimeout(()=>buscar(t),100); }
+  else{ debounce=setTimeout(()=>buscar(t),400); }
 });
 
 // ---- Carrito
-function agregar(prod,cant){
+function agregarAlCarrito(prod,cant){
   const precio=precioPorTier(prod,state.tipoPrecio);
   const ex=state.items.find(x=>x.id===prod.id);
   if(ex){ ex.cant+=cant; ex.importe=round2(ex.cant*ex.precioUnit); }
@@ -266,62 +273,112 @@ function renderCarrito(){
   });
   recalcular();
 }
+
+// ---- Totales con IVA
+function calcularTotales(){
+  const sumImportes = state.items.reduce((a,i)=>a+i.importe,0);
+  if(incluyeIVA.checked){
+    const base = round2(sumImportes / (1+IVA_RATE));
+    const iva  = round2(sumImportes - base);
+    const total= round2(sumImportes);
+    return {base, iva, total};
+  }else{
+    const base = round2(sumImportes);
+    const iva  = round2(base * IVA_RATE);
+    const total= round2(base + iva);
+    return {base, iva, total};
+  }
+}
 function recalcular(){
-  const subtotal=state.items.reduce((a,i)=>a+i.importe,0);
-  lblSubtotal.textContent=`$${money(subtotal)}`;
-  lblTotal.textContent=`$${money(subtotal)}`;
-  const pago=Number(inpPago.value||0);
-  inpCambio.value=`$${money(Math.max(0, round2(pago-subtotal)))}`;
-  msgCobro.textContent='';
+  const {base, iva, total} = calcularTotales();
+  lblSubtotal.textContent = `$${money(base)}`;
+  lblIVA.textContent      = `$${money(iva)}`;
+  lblTotal.textContent    = `$${money(total)}`;
+  const pago = Number(inpPago.value||0);
+  const cambio = Math.max(0, round2(pago - total));
+  inpCambio.value = `$${money(cambio)}`;
+  msgCobro.textContent = '';
 }
 inpPago.oninput=recalcular;
 
-function save(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio,items:state.items})); }
+function save(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio,items:state.items,incluyeIVA:incluyeIVA.checked})); }
 (function load(){
   try{ const raw=JSON.parse(localStorage.getItem(LSKEY)||'null');
-    if(raw){ state.tipoPrecio=raw.tipoPrecio||'publico'; state.items=(raw.items||[]).map(x=>({...x}));
+    if(raw){ state.tipoPrecio=raw.tipoPrecio||'publico'; state.items=(raw.items||[]).map(x=>({...x})); incluyeIVA.checked = (raw.incluyeIVA!==false);
       tierBtns.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.tier===state.tipoPrecio));
       renderCarrito();
     }
   }catch{}
 })();
 
-// ---- Cobro
+// ---- Cobro + guardar + imprimir
 el('#btnCobrar').onclick=cobrar;
 async function cobrar(){
-  const total=state.items.reduce((a,i)=>a+i.importe,0), pago=Number(inpPago.value||0);
+  const {base, iva, total} = calcularTotales();
+  const pago=Number(inpPago.value||0);
   if(!state.items.length){ msgCobro.textContent='Carrito vacío'; return; }
   if(pago<total){ msgCobro.textContent='El pago es menor que el total'; return; }
 
   const consecutivoRef=doc(db,'consecutivos','ventas');
   const ventaId=crypto.randomUUID(); const ventaRef=doc(db,'ventas',ventaId);
 
+  let folioStr='V-000001';
   await runTransaction(db, async tx=>{
     const consSnap=await tx.get(consecutivoRef);
     const n=(consSnap.exists()?(consSnap.data().folioActual||0):0)+1;
     tx.set(consecutivoRef,{folioActual:n});
-    const folioStr=`V-${String(n).padStart(6,'0')}`;
+    folioStr=`V-${String(n).padStart(6,'0')}`;
     tx.set(ventaRef,{
       folio:folioStr, fecha:serverTimestamp(), tipoPrecio:state.tipoPrecio,
-      subtotal:round2(total), impuestos:0, total:round2(total),
+      preciosIncluyenIVA: incluyeIVA.checked,
+      subtotal:base, iva:iva, total:total,
       pago:round2(pago), cambio:round2(pago-total),
       items:state.items.map(i=>({codigo:i.codigo,descripcion:i.desc,cant:i.cant,precioUnit:i.precioUnit,importe:i.importe}))
     });
   });
 
-  const vSnap=await getDoc(ventaRef); imprimirTicket(vSnap.data());
-  state.items=[]; renderCarrito(); save(); input.value=''; inpPago.value=''; recalcular(); input.focus();
+  const vSnap=await getDoc(ventaRef); const venta=vSnap.data();
+  imprimirTicket(venta);
+
+  state.items=[]; renderCarrito(); save();
+  input.value=''; inpPago.value=''; recalcular(); input.focus();
 }
 
-// ---- Ticket
+// ---- Ticket (58mm, monoespaciado, con desglose de IVA)
 function imprimirTicket(v){
-  const t=el('#ticket');
+  const t=document.getElementById('ticket');
   const L = s=>`<div style="white-space:pre">${s||''}</div>`;
   const m = x=>Number(x||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const hdr=[ 'LA PROVEEDORA','BRAVO 244 CENTRO ALLENDE',`FOLIO: ${v.folio}`,`FECHA: ${new Date().toLocaleString('es-MX')}` ].map(L).join('');
-  const det=(v.items||[]).map(i=>{ const d=(i.descripcion||'').slice(0,24); const izq=`${i.cant}x ${d}`.padEnd(26,' '); const der=m(i.importe).padStart(8,' '); return L(izq+der);}).join('');
-  const tot=[ L('------------------------------'), L(`TOTAL:            ${m(v.total).padStart(10,' ')}`), L(`PAGO:             ${m(v.pago).padStart(10,' ')}`), L(`CAMBIO:           ${m(v.cambio).padStart(10,' ')}`) ].join('');
-  t.innerHTML = hdr+L('------------------------------')+det+tot+L('¡GRACIAS!'); window.print();
+  const line='------------------------------'.slice(0,30);
+
+  const hdr=[
+    'LA PROVEEDORA',
+    'BRAVO 244 CENTRO ALLENDE',
+    `FOLIO: ${v.folio||''}`,
+    `FECHA: ${new Date().toLocaleString('es-MX')}`
+  ].map(L).join('');
+
+  const det=(v.items||[]).map(i=>{
+    const d=(i.descripcion||'').slice(0,24);
+    const izq=`${i.cant}x ${d}`.padEnd(24,' ');
+    const der=m(i.importe).padStart(8,' ');
+    return L(izq+der);
+  }).join('');
+
+  const tot = [
+    L(line),
+    L(`BASE:             ${m(v.subtotal).padStart(10,' ')}`),
+    L(`IVA 16%:          ${m(v.iva).padStart(10,' ')}`),
+    L(`TOTAL:            ${m(v.total).padStart(10,' ')}`),
+    L(line),
+    L(`PAGO:             ${m(v.pago).padStart(10,' ')}`),
+    L(`CAMBIO:           ${m(v.cambio).padStart(10,' ')}`)
+  ].join('');
+
+  t.innerHTML = hdr + L(line) + det + tot + L('¡GRACIAS POR SU COMPRA!');
+
+  // Pequeño delay para asegurar que el DOM del ticket ya se pintó
+  setTimeout(()=>window.print(), 80);
 }
 </script>
 </body>
