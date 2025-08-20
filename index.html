@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>POS – La Proveedora (Básico)</title>
+  <title>POS – La Proveedora (Mejorado)</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root{
@@ -52,12 +52,15 @@
       #ticket,#ticket *{visibility:visible}
       #ticket{position:absolute;left:0;top:0;width:250px;font-family:monospace;color:#000}
     }
+
+    .row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    small.hint{color:#444}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>POS Básico – La Proveedora</h1>
+      <h1>POS – La Proveedora</h1>
       <div class="brand">PROVSOFT</div>
     </header>
 
@@ -70,24 +73,32 @@
             <button data-tier="medio">Medio</button>
             <button data-tier="mayoreo">Mayoreo</button>
           </div>
+          <small class="hint">Atajos: F2 Buscar · F4 Cobrar · Ctrl+Del Vaciar</small>
         </div>
         <div class="scan">
           <input type="text" id="buscador" placeholder="Escribe código o nombre… (Enter para buscar)" />
           <button class="btn" id="btnScan">📷 Escanear</button>
         </div>
         <div id="lector"></div>
-        <div style="margin-top:6px;font-size:12px;color:#444">
-          <progress id="barraProgreso" value="0" max="100" style="width:180px"></progress>
-          <span id="estado"></span>
-          <span id="contador" style="float:right"></span>
+        <div style="margin-top:6px;font-size:12px;color:#444" class="row-actions">
+          <div>
+            <progress id="barraProgreso" value="0" max="100" style="width:180px"></progress>
+            <span id="estado"></span>
+          </div>
+          <span id="contador" style="margin-left:auto"></span>
         </div>
         <div id="resultados" class="resultados"></div>
       </div>
 
       <!-- Columna derecha: Carrito y cobro -->
       <div class="card">
-        <h3 style="margin:0 0 8px 0">Carrito</h3>
-        <div style="overflow:auto;max-height:36vh">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <h3 style="margin:0">Carrito</h3>
+          <div class="row-actions">
+            <button class="btn" id="btnVaciar" style="background:#b03636">🗑️ Vaciar</button>
+          </div>
+        </div>
+        <div style="overflow:auto;max-height:36vh;margin-top:6px">
           <table>
             <thead>
               <tr>
@@ -104,8 +115,16 @@
         </div>
 
         <div class="totales" style="margin-top:10px">
+          <div class="totbox" id="boxDescuento">
+            <div class="totline" style="gap:10px;align-items:center">
+              <span>Descuento global (%)</span>
+              <input type="number" id="inpDesc" min="0" max="100" step="0.5" value="0" style="max-width:110px" />
+            </div>
+          </div>
+
           <div class="totbox">
-            <div class="totline"><span>Subtotal</span><strong id="lblSubtotal">$0.00</strong></div>
+            <div class="totline"><span>Subtotal (base sin IVA)</span><strong id="lblSubtotalBase">$0.00</strong></div>
+            <div class="totline"><span>IVA (16%)</span><strong id="lblIVA">$0.00</strong></div>
             <div class="totline"><span>Total</span><strong id="lblTotal">$0.00</strong></div>
           </div>
 
@@ -138,7 +157,10 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getFirestore, collection, query, where, getDocs, orderBy, doc, runTransaction, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-    // === Config Firebase ===
+    // ======= Config =======
+    const IVA = 0.16; // cambia aquí tu tasa de IVA
+    const NOMBRE_NEGOCIO = 'LA PROVEEDORA';
+    const DIRECCION_NEGOCIO = 'BRAVO 244 CENTRO ALLENDE';
     const firebaseConfig = {
       apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
       authDomain: "inventariopv-643f1.firebaseapp.com",
@@ -150,31 +172,43 @@
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
 
-    // === Estado POS ===
+    // ======= Estado POS =======
     const state = {
       tipoPrecio: 'publico',
-      items: [] // {id, codigo, desc, cant, precioUnit, importe}
+      items: [],            // {id, codigo, desc, cant, precioUnit, importe, __prod}
+      descPorc: 0           // % de descuento global
     };
+
+    // ======= UI refs =======
+    const tierBtns = document.getElementById('tierBtns');
     const tbody = document.getElementById('tbodyCarrito');
-    const lblSubtotal = document.getElementById('lblSubtotal');
-    const lblTotal = document.getElementById('lblTotal');
+    const input = document.getElementById('buscador');
+    const resultadosDiv = document.getElementById('resultados');
+    const barraProgreso = document.getElementById('barraProgreso');
+    const estado = document.getElementById('estado');
+    const contador = document.getElementById('contador');
     const inpPago = document.getElementById('inpPago');
     const inpCambio = document.getElementById('inpCambio');
     const msgCobro = document.getElementById('msgCobro');
+    const lblSubtotalBase = document.getElementById('lblSubtotalBase');
+    const lblIVA = document.getElementById('lblIVA');
+    const lblTotal = document.getElementById('lblTotal');
+    const inpDesc = document.getElementById('inpDesc');
 
     function money(n){
       const x = Number(n||0);
       return x.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2});
     }
+    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
+    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
 
-    // === Tier de precio ===
-    const tierBtns = document.getElementById('tierBtns');
+    // ======= Tiers =======
     tierBtns.addEventListener('click',(e)=>{
       if(e.target.tagName!=='BUTTON') return;
       tierBtns.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
       e.target.classList.add('active');
       state.tipoPrecio = e.target.dataset.tier;
-      // Revalorizar precios del carrito
+      // Revalorizar
       state.items.forEach(it=>{
         const prod = it.__prod;
         it.precioUnit = precioPorTier(prod, state.tipoPrecio);
@@ -191,16 +225,8 @@
       if(tier==='medio')   return med || pub;
       return pub;
     }
-    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
-    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
 
-    // === Buscador (basado en tu código) ===
-    const input = document.getElementById('buscador');
-    const resultadosDiv = document.getElementById('resultados');
-    const barraProgreso = document.getElementById('barraProgreso');
-    const estado = document.getElementById('estado');
-    const contador = document.getElementById('contador');
-
+    // ======= Buscador =======
     let resultados = [];
     let pagina = 0;
     const porPagina = 30;
@@ -209,15 +235,21 @@
       resultadosDiv.innerHTML = "⏳ Buscando...";
       barraProgreso.value = 0; estado.textContent = ""; resultados = [];
 
-      // 1) Si parece código de barras exacto
+      // 1) Coincidencia exacta por código numérico
       if(/^\d+$/.test(termino)){
         const q1 = query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==', termino));
         const s1 = await getDocs(q1);
         resultados = s1.docs.map(d=>({id:d.id, ...d.data()}));
-        if(resultados.length>0){ mostrarPagina(0); return; }
+        // Si hay 1 solo resultado exacto → agregar directo al carrito
+        if(resultados.length===1){
+          agregarAlCarritoDesdeProducto(resultados[0], 1);
+          resultadosDiv.innerHTML = '';
+          contador.textContent = `Agregado: ${resultados[0].concepto||''}`;
+          return;
+        }
       }
 
-      // 2) Búsqueda por concepto (cliente-side)
+      // 2) Búsqueda por concepto cliente-side
       const q2 = query(collection(db,'productos'), where('activo','==',true), orderBy('concepto'));
       const s2 = await getDocs(q2);
       const palabras = termino.toLowerCase().split(/\s+/).filter(Boolean);
@@ -273,11 +305,11 @@
       clearTimeout(debounceTimer);
       const t = input.value.trim();
       if(!t){ resultadosDiv.innerHTML=''; contador.textContent=''; return; }
-      debounceTimer = setTimeout(()=>buscarProductos(t), 500);
+      debounceTimer = setTimeout(()=>buscarProductos(t), 400);
     });
     input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ const t=input.value.trim(); if(t) buscarProductos(t); }});
 
-    // === Escáner ===
+    // ======= Lector de cámara =======
     const divLector = document.getElementById('lector');
     document.getElementById('btnScan').addEventListener('click', iniciarEscaneo);
     function iniciarEscaneo(){
@@ -285,16 +317,26 @@
       const lector = new Html5Qrcode('lector');
       lector.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: 250 },
+        { fps: 12, qrbox: 250 },
         async codigo => {
-          input.value = codigo; await buscarProductos(codigo);
-          lector.stop(); divLector.style.display='none';
+          // al detectar → intenta agregar directo
+          const q1 = query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==', codigo));
+          const s1 = await getDocs(q1);
+          if(s1.size===1){
+            const p = {id:s1.docs[0].id, ...s1.docs[0].data()};
+            agregarAlCarritoDesdeProducto(p, 1);
+            contador.textContent = `Agregado: ${p.concepto||''}`;
+          } else {
+            input.value = codigo;
+            await buscarProductos(codigo);
+          }
+          // sigue escaneando (no se detiene) para flujo continuo
         },
-        err => console.log('scan err', err)
+        err => {/* ruido de escaneo */}
       ).catch(err=>{ console.error('cam error',err); });
     }
 
-    // === Carrito ===
+    // ======= Carrito =======
     function agregarAlCarritoDesdeProducto(prod, cant){
       const precio = precioPorTier(prod, state.tipoPrecio);
       const existente = state.items.find(x=>x.id===prod.id);
@@ -337,7 +379,7 @@
           </td>`;
         tbody.appendChild(tr);
       });
-      // Delegación
+      // Delegación de botones
       tbody.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', (e)=>{
           const i = Number(e.currentTarget.dataset.i);
@@ -348,6 +390,7 @@
           renderCarrito(); saveLocal();
         });
       });
+      // Cambios directos en input cantidad
       tbody.querySelectorAll('input[type="number"]').forEach(inp=>{
         inp.addEventListener('change',(e)=>{
           const i = Number(e.currentTarget.dataset.i);
@@ -360,25 +403,53 @@
       recalcular();
     }
 
+    function totalsBrutos(){
+      // Suma importes de líneas (precios ya incluyen IVA)
+      return state.items.reduce((a,i)=>a+i.importe,0);
+    }
+
     function recalcular(){
-      const subtotal = state.items.reduce((a,i)=>a+i.importe,0);
-      lblSubtotal.textContent = `$${money(subtotal)}`;
-      lblTotal.textContent = `$${money(subtotal)}`;
+      const bruto = totalsBrutos(); // total con IVA, sin descuento
+      const descPorc = Math.min(100, Math.max(0, num(inpDesc.value||0)));
+      state.descPorc = descPorc;
+      const descuentoImporte = round2(bruto * (descPorc/100));
+      const totalDespuesDescuento = Math.max(0, round2(bruto - descuentoImporte));
+
+      // Si los precios incluyen IVA → base = total / (1+IVA), iva = total - base
+      const base = round2(totalDespuesDescuento / (1+IVA));
+      const iva = round2(totalDespuesDescuento - base);
+
+      lblSubtotalBase.textContent = `$${money(base)}`;
+      lblIVA.textContent = `$${money(iva)}`;
+      lblTotal.textContent = `$${money(totalDespuesDescuento)}`;
+
       const pago = Number(inpPago.value||0);
-      const cambio = Math.max(0, round2(pago - subtotal));
+      const cambio = Math.max(0, round2(pago - totalDespuesDescuento));
       inpCambio.value = `$${money(cambio)}`;
       msgCobro.textContent = '';
     }
 
     inpPago.addEventListener('input', recalcular);
+    inpDesc.addEventListener('input', recalcular);
+    document.getElementById('btnVaciar').addEventListener('click', ()=>{
+      state.items = []; renderCarrito(); saveLocal();
+    });
 
     // Persistencia local
-    const LSKEY='carritoPOS';
-    function saveLocal(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.tipoPrecio, items:state.items})); }
+    const LSKEY='carritoPOS_v2';
+    function saveLocal(){
+      localStorage.setItem(LSKEY, JSON.stringify({
+        tipoPrecio:state.tipoPrecio, items:state.items, descPorc:state.descPorc
+      }));
+    }
     function loadLocal(){
       try{
         const raw = JSON.parse(localStorage.getItem(LSKEY)||'null');
-        if(raw){ state.tipoPrecio = raw.tipoPrecio||'publico'; state.items = (raw.items||[]).map(x=>({...x}));
+        if(raw){
+          state.tipoPrecio = raw.tipoPrecio||'publico';
+          state.items = (raw.items||[]).map(x=>({...x}));
+          state.descPorc = num(raw.descPorc||0);
+          inpDesc.value = state.descPorc;
           // activar botón del tier actual
           tierBtns.querySelectorAll('button').forEach(b=>{
             b.classList.toggle('active', b.dataset.tier===state.tipoPrecio);
@@ -389,73 +460,98 @@
     }
     loadLocal();
 
-    // === Cobro ===
+    // ======= Cobro =======
     document.getElementById('btnCobrar').addEventListener('click', cobrarVenta);
 
     async function cobrarVenta(){
-      const total = state.items.reduce((a,i)=>a+i.importe,0);
-      const pago = Number(inpPago.value||0);
       if(state.items.length===0){ msgCobro.textContent='Carrito vacío'; return; }
+
+      const bruto = totalsBrutos();
+      const descuentoImporte = round2(bruto * (state.descPorc/100));
+      const total = Math.max(0, round2(bruto - descuentoImporte));
+      const base = round2(total / (1+IVA));
+      const iva = round2(total - base);
+
+      const pago = Number(inpPago.value||0);
       if(pago < total){ msgCobro.textContent='El pago es menor que el total'; return; }
 
       const consecutivoRef = doc(db,'consecutivos','ventas');
       const ventaId = crypto.randomUUID();
       const ventaRef = doc(db,'ventas', ventaId);
 
+      let folioStr = '';
       await runTransaction(db, async (tx)=>{
         const consSnap = await tx.get(consecutivoRef);
         const n = (consSnap.exists()? (consSnap.data().folioActual||0):0) + 1;
         tx.set(consecutivoRef,{folioActual:n});
-        const folioStr = `V-${String(n).padStart(6,'0')}`;
+        folioStr = `V-${String(n).padStart(6,'0')}`;
         const payload = {
           folio: folioStr,
           fecha: serverTimestamp(),
           tipoPrecio: state.tipoPrecio,
-          subtotal: round2(total),
-          impuestos: 0,
-          total: round2(total),
+          subtotalBase: base,
+          iva: iva,
+          total: total,
           pago: round2(pago),
           cambio: round2(pago-total),
+          descuentoPorc: state.descPorc,
+          descuentoImporte: descuentoImporte,
           items: state.items.map(i=>({ codigo:i.codigo, descripcion:i.desc, cant:i.cant, precioUnit:i.precioUnit, importe:i.importe }))
         };
         tx.set(ventaRef, payload);
       });
 
-      // Traer la venta guardada para ticket (folio)
-      const vSnap = await getDoc(ventaRef);
-      const venta = vSnap.data();
+      // Ticket
+      const ventaSnap = await getDoc(ventaRef);
+      const venta = ventaSnap.data();
       imprimirTicket(venta);
 
       // limpiar
       state.items=[]; renderCarrito(); saveLocal();
-      input.value=''; inpPago.value=''; recalcular();
+      input.value=''; inpPago.value=''; inpDesc.value = 0; state.descPorc = 0; recalcular();
     }
 
-    // === Ticket ===
+    // ======= Ticket =======
     function imprimirTicket(venta){
       const el = document.getElementById('ticket');
       const line = (t='') => `<div style="white-space:pre">${t}</div>`;
       const hdr = [
-        'LA PROVEEDORA',
-        'BRAVO 244 CENTRO ALLENDE',
+        NOMBRE_NEGOCIO,
+        DIRECCION_NEGOCIO,
         `FOLIO: ${venta.folio}`,
         `FECHA: ${new Date().toLocaleString('es-MX')}`
       ].map(line).join('');
+
       const det = (venta.items||[]).map(i=>{
         const desc = (i.descripcion||'').slice(0,24);
         const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
         const der = money(i.importe).padStart(8,' ');
         return line(izq+der);
       }).join('');
+
       const tot = [
         line('------------------------------'),
-        line(`TOTAL:            ${money(venta.total).padStart(10,' ')}`),
-        line(`PAGO:             ${money(venta.pago).padStart(10,' ')}`),
-        line(`CAMBIO:           ${money(venta.cambio).padStart(10,' ')}`)
+        line(`SUBTOTAL:        ${money(venta.subtotalBase).padStart(10,' ')}`),
+        line(`IVA:             ${money(venta.iva).padStart(10,' ')}`),
+        (venta.descuentoImporte>0 ? line(`DESC:            ${money(venta.descuentoImporte).padStart(10,' ')}`) : ''),
+        line(`TOTAL:           ${money(venta.total).padStart(10,' ')}`),
+        line(`PAGO:            ${money(venta.pago).padStart(10,' ')}`),
+        line(`CAMBIO:          ${money(venta.cambio).padStart(10,' ')}`)
       ].join('');
-      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
+
+      el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS POR SU COMPRA!');
       window.print();
     }
+
+    // ======= Atajos de teclado =======
+    window.addEventListener('keydown', (e)=>{
+      // F2 → foco en buscador
+      if(e.key==='F2'){ e.preventDefault(); input.focus(); input.select(); }
+      // F4 → cobrar
+      if(e.key==='F4'){ e.preventDefault(); document.getElementById('btnCobrar').click(); }
+      // Ctrl+Del → vaciar
+      if(e.key==='Delete' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); document.getElementById('btnVaciar').click(); }
+    });
   </script>
 </body>
 </html>
