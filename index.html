@@ -72,8 +72,8 @@
           </div>
         </div>
         <div class="scan">
-          <input type="text" id="buscador" placeholder="Escribe código o nombre… (Enter para buscar)" />
-          <button class="btn" id="btnScan">📷 Escanear</button>
+          <input type="text" id="buscador" placeholder="Escanea o escribe código/nombre y Enter…" autofocus />
+          <!-- (Se eliminó el botón de cámara) -->
         </div>
         <div id="lector"></div>
         <div style="margin-top:6px;font-size:12px;color:#444">
@@ -130,8 +130,7 @@
   <!-- Ticket para imprimir -->
   <div id="ticket"></div>
 
-  <!-- Cámara -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- (Se eliminó: <script src="https://unpkg.com/html5-qrcode"></script>) -->
 
   <!-- Firebase -->
   <script type="module">
@@ -153,7 +152,7 @@
     // === Estado POS ===
     const state = {
       tipoPrecio: 'publico',
-      items: [] // {id, codigo, desc, cant, precioUnit, importe}
+      items: [] // {id, codigo, desc, cant, precioUnit, importe, __prod}
     };
     const tbody = document.getElementById('tbodyCarrito');
     const lblSubtotal = document.getElementById('lblSubtotal');
@@ -166,6 +165,8 @@
       const x = Number(n||0);
       return x.toLocaleString('es-MX',{minimumFractionDigits:2, maximumFractionDigits:2});
     }
+    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
+    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
 
     // === Tier de precio ===
     const tierBtns = document.getElementById('tierBtns');
@@ -191,10 +192,8 @@
       if(tier==='medio')   return med || pub;
       return pub;
     }
-    function num(v){ const n=Number(v); return isNaN(n)?0:n; }
-    function round2(x){ return Math.round((x+Number.EPSILON)*100)/100; }
 
-    // === Buscador (basado en tu código) ===
+    // === Buscador ===
     const input = document.getElementById('buscador');
     const resultadosDiv = document.getElementById('resultados');
     const barraProgreso = document.getElementById('barraProgreso');
@@ -268,31 +267,37 @@
       contador.textContent = `Resultados: ${resultados.length} | Página ${pagina+1} de ${Math.ceil(resultados.length/porPagina)}`;
     }
 
+    // Soporte lector físico:
+    // - Enter dispara búsqueda
+    // - Si es código de 6+ dígitos, búsqueda auto con pequeño debounce
     let debounceTimer;
     input.addEventListener('input',()=>{
       clearTimeout(debounceTimer);
       const t = input.value.trim();
       if(!t){ resultadosDiv.innerHTML=''; contador.textContent=''; return; }
-      debounceTimer = setTimeout(()=>buscarProductos(t), 500);
-    });
-    input.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ const t=input.value.trim(); if(t) buscarProductos(t); }});
 
-    // === Escáner ===
-    const divLector = document.getElementById('lector');
-    document.getElementById('btnScan').addEventListener('click', iniciarEscaneo);
-    function iniciarEscaneo(){
-      divLector.style.display='block';
-      const lector = new Html5Qrcode('lector');
-      lector.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: 250 },
-        async codigo => {
-          input.value = codigo; await buscarProductos(codigo);
-          lector.stop(); divLector.style.display='none';
-        },
-        err => console.log('scan err', err)
-      ).catch(err=>{ console.error('cam error',err); });
-    }
+      // Auto-búsqueda si es numérico largo (escáner)
+      if(/^\d{6,}$/.test(t)){
+        debounceTimer = setTimeout(async ()=>{
+          await buscarProductos(t);
+          // Si hay exactamente 1 resultado, agregar directo
+          if(resultados.length===1){
+            agregarAlCarritoDesdeProducto(resultados[0], 1);
+            input.value=''; resultadosDiv.innerHTML=''; contador.textContent='';
+            input.focus();
+          }
+        }, 120);
+      } else {
+        // Texto: búsqueda normal con debounce
+        debounceTimer = setTimeout(()=>buscarProductos(t), 400);
+      }
+    });
+    input.addEventListener('keydown',(e)=>{
+      if(e.key==='Enter'){
+        const t=input.value.trim();
+        if(t) buscarProductos(t);
+      }
+    });
 
     // === Carrito ===
     function agregarAlCarritoDesdeProducto(prod, cant){
@@ -337,7 +342,7 @@
           </td>`;
         tbody.appendChild(tr);
       });
-      // Delegación
+      // Delegación de eventos
       tbody.querySelectorAll('button').forEach(b=>{
         b.addEventListener('click', (e)=>{
           const i = Number(e.currentTarget.dataset.i);
@@ -378,7 +383,9 @@
     function loadLocal(){
       try{
         const raw = JSON.parse(localStorage.getItem(LSKEY)||'null');
-        if(raw){ state.tipoPrecio = raw.tipoPrecio||'publico'; state.items = (raw.items||[]).map(x=>({...x}));
+        if(raw){ 
+          state.tipoPrecio = raw.tipoPrecio||'publico'; 
+          state.items = (raw.items||[]).map(x=>({...x}));
           // activar botón del tier actual
           tierBtns.querySelectorAll('button').forEach(b=>{
             b.classList.toggle('active', b.dataset.tier===state.tipoPrecio);
@@ -429,11 +436,13 @@
       // limpiar
       state.items=[]; renderCarrito(); saveLocal();
       input.value=''; inpPago.value=''; recalcular();
+      input.focus();
     }
 
     // === Ticket ===
     function imprimirTicket(venta){
       const el = document.getElementById('ticket');
+      const moneyStr = v => Number(v||0).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
       const line = (t='') => `<div style="white-space:pre">${t}</div>`;
       const hdr = [
         'LA PROVEEDORA',
@@ -444,14 +453,14 @@
       const det = (venta.items||[]).map(i=>{
         const desc = (i.descripcion||'').slice(0,24);
         const izq = `${i.cant}x ${desc}`.padEnd(26,' ');
-        const der = money(i.importe).padStart(8,' ');
+        const der = moneyStr(i.importe).padStart(8,' ');
         return line(izq+der);
       }).join('');
       const tot = [
         line('------------------------------'),
-        line(`TOTAL:            ${money(venta.total).padStart(10,' ')}`),
-        line(`PAGO:             ${money(venta.pago).padStart(10,' ')}`),
-        line(`CAMBIO:           ${money(venta.cambio).padStart(10,' ')}`)
+        line(`TOTAL:            ${moneyStr(venta.total).padStart(10,' ')}`),
+        line(`PAGO:             ${moneyStr(venta.pago).padStart(10,' ')}`),
+        line(`CAMBIO:           ${moneyStr(venta.cambio).padStart(10,' ')}`)
       ].join('');
       el.innerHTML = hdr + line('------------------------------') + det + tot + line('¡GRACIAS!');
       window.print();
