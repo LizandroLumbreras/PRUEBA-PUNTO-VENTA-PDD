@@ -1,65 +1,126 @@
 <!DOCTYPE html><html lang="es"><head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>POS – La Proveedora</title>
+<title>POS – La Proveedora (Vista Clásica)</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
 <style>
-:root{--prim:#0c6cbd;--card:#fff;--sombra:rgba(0,0,0,.12)}
+:root{--prim:#0c6cbd;--azul:#00416A;--card:#fff;--sombra:rgba(0,0,0,.12)}
 *{box-sizing:border-box}body{font-family:Poppins,system-ui,Arial;background:linear-gradient(90deg,#00416A,#E4E5E6);margin:0;color:#111}
-.wrap{max-width:1100px;margin:auto;padding:16px}
-header{display:flex;align-items:center;justify-content:space-between;color:#fff;margin-bottom:12px}
-.card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:14px}
-.grid{display:grid;grid-template-columns:2fr 1.3fr;gap:14px}
-.tier{display:flex;gap:8px;margin:6px 0 10px}
-.tier button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:8px 12px;cursor:pointer}
+.wrap{max-width:1100px;margin:auto;padding:12px}
+
+/* ── Barra superior (menú clásico) ─────────────────────────────── */
+.topbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.topbar .mbtn{background:#fff;border:1px solid #d9dee6;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px var(--sombra);cursor:pointer}
+.topbar .mwrap{display:flex;gap:8px}
+
+/* ── Encabezado reducido ───────────────────────────────────────── */
+header{display:flex;align-items:center;justify-content:space-between;color:#fff;margin:6px 0 10px}
+header .brand{display:flex;align-items:center;gap:10px}
+header img{height:38px;width:38px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.25))}
+
+/* ── Cards / layout ───────────────────────────────────────────── */
+.card{background:var(--card);border-radius:14px;box-shadow:0 10px 25px var(--sombra);padding:12px}
+.grid{display:grid;grid-template-columns:1.6fr 1.2fr;gap:12px}
+
+/* ── Panel izquierdo estilo “ventana” ─────────────────────────── */
+.visor{display:grid;grid-template-columns:1fr 210px;gap:10px;align-items:start}
+.busq{grid-column:1 / span 2;display:flex;gap:8px;align-items:center}
+#buscador{flex:1;padding:12px 14px;border:1px solid #cfd6e3;border-radius:10px;font-size:18px;background:#fff6a6}
+.busq .right{display:flex;gap:8px;align-items:center}
+.tier{display:flex;gap:6px}
+.tier button{border:1px solid #ddd;background:#fff;border-radius:999px;padding:6px 10px;cursor:pointer}
 .tier .active{background:var(--prim);color:#fff;border-color:var(--prim)}
-.scan{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
-input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid #d9dee6;border-radius:10px;font-size:14px}
 .btn{background:var(--prim);color:#fff;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
-.small{font-size:12px;color:#444}
-.resultados{max-height:52vh;overflow:auto;padding-right:6px}
+
+.logoBox{min-height:220px;background:linear-gradient(180deg,#f9fbff,#ffffff);border:1px dashed #d7deea;border-radius:12px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.logoBox img{max-height:180px;max-width:90%;opacity:.9}
+.resultados{max-height:42vh;overflow:auto;border:1px solid #eef1f5;border-radius:12px;padding:8px;background:#fff}
 .producto{border:1px solid #e5e7eb;border-radius:12px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;gap:10px}
-.producto .info{font-size:13px}.precios{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.producto .precios{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.small{font-size:12px;color:#444}
+
+/* ── Panel de estado derecho (fecha, venta, cajero) ───────────── */
+.status{display:grid;gap:6px}
+.status .kv{display:flex;justify-content:space-between;border-bottom:1px dashed #e5e7f2;padding:6px 0}
+
+/* ── Carrito ──────────────────────────────────────────────────── */
 table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eef1f5;text-align:center;font-size:13px}th{background:#f8fafc}
 .acciones button{border:1px solid #dfe3ea;background:#fff;border-radius:8px;padding:4px 8px;margin:0 2px;cursor:pointer}
 .totales{display:grid;gap:8px}.totline{display:flex;justify-content:space-between}
 .totbox{background:#f8fafc;border:1px dashed #cfd6e3;border-radius:12px;padding:10px}
 
+/* ── Barra de atajos al pie ───────────────────────────────────── */
+.footerbar{margin-top:10px;background:rgba(255,255,255,.9);border:1px solid #d9dee6;border-radius:10px;padding:6px 10px;font-size:12px;display:flex;gap:14px;flex-wrap:wrap;box-shadow:0 6px 18px var(--sombra)}
+.k{font-weight:700;background:#eef3fb;border:1px solid #d9e2ff;padding:2px 6px;border-radius:6px}
+
+/* ── Ticket impresión ─────────────────────────────────────────── */
 #ticket{display:none}
 @media print{
   body *{visibility:hidden}
   #ticket,#ticket *{visibility:visible}
-  /* Ancho 58mm (~230px), con padding, para evitar página en blanco */
-  #ticket{display:block;position:absolute;left:0;top:0;width:230px;padding:6px 8px;
-          font-family:monospace;line-height:1.2;color:#000;background:#fff}
+  #ticket{display:block;position:absolute;left:0;top:0;width:230px;padding:6px 8px;font-family:monospace;line-height:1.2;color:#000;background:#fff}
 }
 </style>
 </head><body>
 <div class="wrap">
-  <header><h1 style="margin:0;font-size:20px">POS Básico – La Proveedora</h1><div>PROVSOFT</div></header>
+
+  <!-- Menú clásico superior -->
+  <div class="topbar">
+    <div class="mwrap">
+      <button class="mbtn" id="mbCorte">Corte de Caja</button>
+      <button class="mbtn" id="mbCancelar">Cancelar Venta</button>
+      <button class="mbtn" id="mbDesc">Descuento</button>
+      <button class="mbtn" id="mbSalidas">Salidas de Efectivo</button>
+    </div>
+    <div style="flex:1"></div>
+    <button class="mbtn" id="mbSalir">Salir</button>
+  </div>
+
+  <header>
+    <div class="brand">
+      <img src="https://raw.githubusercontent.com/lizandrolumbreras/CIGARRO-INVENTARIO/main/logo_proveedora.webp" alt="logo"/>
+      <h2 style="margin:0;font-size:18px">Punto de Venta – La Proveedora</h2>
+    </div>
+    <div>PROVSOFT</div>
+  </header>
 
   <div class="grid">
-    <!-- IZQ -->
+    <!-- IZQUIERDA: visor + resultados -->
     <div class="card">
-      <div class="tier" id="tierBtns">
-        <button data-tier="publico" class="active">Público</button>
-        <button data-tier="medio">Medio</button>
-        <button data-tier="mayoreo">Mayoreo</button>
-      </div>
-      <div class="scan">
+      <div class="busq">
         <input id="buscador" type="text" placeholder="Escanea o escribe y Enter…" autofocus/>
-        <label class="small" style="display:flex;gap:6px;align-items:center">
-          <input id="autoAdd" type="checkbox" checked/> Auto-agregar por código
-        </label>
-        <button id="btnLimpiar" class="btn" title="Limpiar">Limpiar</button>
+        <div class="right">
+          <label class="small" style="display:flex;gap:6px;align-items:center">
+            <input id="autoAdd" type="checkbox" checked/> Auto-agregar
+          </label>
+          <div class="tier" id="tierBtns">
+            <button data-tier="publico" class="active">Público</button>
+            <button data-tier="medio">Medio</button>
+            <button data-tier="mayoreo">Mayoreo</button>
+          </div>
+          <button id="btnLimpiar" class="btn">Limpiar</button>
+        </div>
       </div>
-      <div class="small" style="margin-top:6px">
-        <progress id="barraProgreso" value="0" max="100" style="width:160px"></progress>
-        <span id="estado"></span><span id="contador" style="float:right"></span>
+
+      <div class="visor">
+        <div class="logoBox">
+          <img src="https://raw.githubusercontent.com/lizandrolumbreras/CIGARRO-INVENTARIO/main/logo_proveedora.webp" alt="La Proveedora">
+        </div>
+        <div class="card" style="padding:10px">
+          <h4 style="margin:0 0 6px;color:#334">Panel</h4>
+          <div class="status">
+            <div class="kv"><span>Fecha:</span><strong id="stFecha"></strong></div>
+            <div class="kv"><span># Venta:</span><strong id="stVenta">0</strong></div>
+            <div class="kv"><span>Caj/Usu:</span><strong id="stCajero">3 / gerardo</strong></div>
+            <div class="kv"><span>Resultados:</span><strong id="contador">0</strong></div>
+            <div><progress id="barraProgreso" value="0" max="100" style="width:100%"></progress><span id="estado" class="small"></span></div>
+          </div>
+        </div>
       </div>
+
       <div id="resultados" class="resultados"></div>
     </div>
 
-    <!-- DER -->
+    <!-- DERECHA: carrito -->
     <div class="card">
       <h3 style="margin:0 0 8px">Carrito</h3>
       <div style="overflow:auto;max-height:36vh">
@@ -69,11 +130,9 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px so
       </div>
 
       <div class="totales" style="margin-top:10px">
-        <div style="display:flex;gap:12px;align-items:center">
-          <label class="small" style="display:flex;gap:6px;align-items:center">
-            <input id="incluyeIVA" type="checkbox" checked/> Precios incluyen IVA (16%)
-          </label>
-        </div>
+        <label class="small" style="display:flex;gap:6px;align-items:center">
+          <input id="incluyeIVA" type="checkbox" checked/> Precios incluyen IVA (16%)
+        </label>
 
         <div class="totbox">
           <div class="totline"><span>Subtotal (base)</span><strong id="lblSubtotal">$0.00</strong></div>
@@ -89,6 +148,17 @@ table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px so
         <small id="msgCobro" style="display:block;color:#b00;margin-top:6px"></small>
       </div>
     </div>
+  </div>
+
+  <!-- Atajos tipo F1..F12 -->
+  <div class="footerbar">
+    <span><span class="k">F1</span> Consulta</span>
+    <span><span class="k">F2</span> Precios</span>
+    <span><span class="k">F4</span> Tickets</span>
+    <span><span class="k">F5</span> Cliente</span>
+    <span><span class="k">F9</span> Envia Espera</span>
+    <span><span class="k">F10</span> Trae Espera</span>
+    <span><span class="k">F12</span> Cobrar</span>
   </div>
 </div>
 
@@ -109,7 +179,7 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-// ---- Estado/UI helpers
+// helpers
 const el = s=>document.querySelector(s);
 const tierBtns = el('#tierBtns');
 const input = el('#buscador');
@@ -125,6 +195,7 @@ const lblTotal = el('#lblTotal');
 const inpPago = el('#inpPago');
 const inpCambio = el('#inpCambio');
 const msgCobro = el('#msgCobro');
+const stFecha = el('#stFecha'); stFecha.textContent = new Date().toLocaleDateString('es-MX');
 
 const IVA_RATE = 0.16;
 const state = { tipoPrecio:'publico', items:[] };
@@ -133,7 +204,7 @@ const money = n => Number(n||0).toLocaleString('es-MX',{minimumFractionDigits:2,
 const num = v => (isNaN(Number(v))?0:Number(v));
 const round2 = x => Math.round((Number(x)+Number.EPSILON)*100)/100;
 
-// ---- Tier
+// ── Tier
 tierBtns.addEventListener('click',e=>{
   if(e.target.tagName!=='BUTTON') return;
   tierBtns.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
@@ -154,9 +225,9 @@ function precioPorTier(p,tier){
   return pub;
 }
 
-// ---- Buscar
-let resultados=[], pagina=0, porPagina=30, debounce;
-btnLimpiar.onclick=()=>{ input.value=''; resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; input.focus(); };
+// ── Buscar (código o nombre)
+let resultados=[], debounce;
+btnLimpiar.onclick=()=>{ input.value=''; resultados=[]; resultadosDiv.innerHTML=''; contador.textContent='0'; input.focus(); };
 
 async function lookupCodigo(codigo){
   const s = await getDocs(query(collection(db,'productos'), where('activo','==',true), where('codigoBarra','==',codigo)));
@@ -189,8 +260,8 @@ async function buscar(termino){
 }
 function mostrarResultados(list){
   resultadosDiv.innerHTML='';
-  if(!list.length){ resultadosDiv.textContent='❌ No se encontraron resultados'; contador.textContent=''; return; }
-  list.slice(0,porPagina).forEach(p=>{
+  if(!list.length){ resultadosDiv.textContent='❌ No se encontraron resultados'; contador.textContent='0'; return; }
+  list.slice(0,30).forEach(p=>{
     const div=document.createElement('div'); div.className='producto';
     div.innerHTML=`
       <div class="info">
@@ -210,11 +281,11 @@ function mostrarResultados(list){
     div.querySelector('button').onclick=()=>{ agregarAlCarrito(p, Math.max(1,parseInt(qty.value||'1',10))); };
     resultadosDiv.appendChild(div);
   });
-  contador.textContent=`Resultados: ${list.length}`;
+  contador.textContent=String(list.length);
 }
-function limpiarResultados(){ resultados=[]; resultadosDiv.innerHTML=''; contador.textContent=''; }
+function limpiarResultados(){ resultados=[]; resultadosDiv.innerHTML=''; contador.textContent='0'; }
 
-// Lector: Enter o debounce por dígitos
+// Enter / debounce
 input.addEventListener('keydown',e=>{
   if(e.key==='Enter'){
     const t=input.value.trim(); if(!t) return;
@@ -225,11 +296,10 @@ input.addEventListener('input',()=>{
   clearTimeout(debounce);
   const t=input.value.trim();
   if(!t){limpiarResultados();return;}
-  if(/^\d{6,}$/.test(t)){ debounce=setTimeout(()=>buscar(t),100); }
-  else{ debounce=setTimeout(()=>buscar(t),400); }
+  debounce=setTimeout(()=>buscar(t), /^\d{6,}$/.test(t)?120:400);
 });
 
-// ---- Carrito
+// ── Carrito
 function agregarAlCarrito(prod,cant){
   const precio=precioPorTier(prod,state.tipoPrecio);
   const ex=state.items.find(x=>x.id===prod.id);
@@ -274,7 +344,7 @@ function renderCarrito(){
   recalcular();
 }
 
-// ---- Totales con IVA
+// ── Totales con IVA
 function calcularTotales(){
   const sumImportes = state.items.reduce((a,i)=>a+i.importe,0);
   if(incluyeIVA.checked){
@@ -311,7 +381,7 @@ function save(){ localStorage.setItem(LSKEY, JSON.stringify({tipoPrecio:state.ti
   }catch{}
 })();
 
-// ---- Cobro + guardar + imprimir
+// ── Cobro + guardar + imprimir
 el('#btnCobrar').onclick=cobrar;
 async function cobrar(){
   const {base, iva, total} = calcularTotales();
@@ -340,11 +410,15 @@ async function cobrar(){
   const vSnap=await getDoc(ventaRef); const venta=vSnap.data();
   imprimirTicket(venta);
 
+  // actualizar panel #venta (visual)
+  const nVenta = Number(el('#stVenta').textContent||'0')+1;
+  el('#stVenta').textContent = String(nVenta);
+
   state.items=[]; renderCarrito(); save();
   input.value=''; inpPago.value=''; recalcular(); input.focus();
 }
 
-// ---- Ticket (58mm, monoespaciado, con desglose de IVA)
+// ── Ticket 58mm con desglose IVA
 function imprimirTicket(v){
   const t=document.getElementById('ticket');
   const L = s=>`<div style="white-space:pre">${s||''}</div>`;
@@ -376,10 +450,7 @@ function imprimirTicket(v){
   ].join('');
 
   t.innerHTML = hdr + L(line) + det + tot + L('¡GRACIAS POR SU COMPRA!');
-
-  // Pequeño delay para asegurar que el DOM del ticket ya se pintó
   setTimeout(()=>window.print(), 80);
 }
 </script>
-</body>
-</html>
+</body></html>
