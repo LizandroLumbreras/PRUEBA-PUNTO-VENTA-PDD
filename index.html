@@ -52,13 +52,28 @@
     details.settings summary{cursor:pointer;font-weight:600}
 
     /* Ticket print */
-    #ticket{display:none}
-    @media print{
-      body *{visibility:hidden}
-      #ticket,#ticket *{visibility:visible}
-      #ticket{position:absolute;left:0;top:0;width:250px;font-family:monospace;color:#000}
-    }
+   /* Ticket oculto en pantalla */
+#ticket{display:none}
 
+/* Al imprimir, mostrar solo el ticket */
+@media print{
+  @page{ size: 80mm auto; margin: 0 }       /* ancho de rollo 80mm, alto automático */
+  body *{ visibility: hidden !important; }
+  #ticket, #ticket *{
+    visibility: visible !important;
+  }
+  #ticket{
+    display: block !important;              /* CLAVE: el ticket ya no está oculto */
+    position: absolute;
+    left: 0; top: 0;
+    width: 80mm;                             /* ancho real */
+    padding: 2mm 3mm;
+    font-family: monospace;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+  }
+}
     .row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     small.hint{color:#444}
     .switch{display:inline-flex;align-items:center;gap:6px;font-size:12px}
@@ -696,9 +711,12 @@
       ].join('');
 
       const html = hdr + line('------------------------------') + det + tot;
-      el.innerHTML = html;
-      localStorage.setItem(LSKEY_TICKET, html);
-      window.print();
+     el.innerHTML = html;
+localStorage.setItem(LSKEY_TICKET, html);
+
+/* Espera un frame antes de imprimir para evitar hoja en blanco */
+requestAnimationFrame(()=> setTimeout(()=> window.print(), 0));
+
     }
 
     // ======= Atajos de teclado =======
