@@ -56,23 +56,23 @@
 #ticket{display:none}
 
 /* Al imprimir, mostrar solo el ticket */
-@media print{
-  @page{ size: 80mm auto; margin: 0 }       /* ancho de rollo 80mm, alto automático */
-  body *{ visibility: hidden !important; }
-  #ticket, #ticket *{
-    visibility: visible !important;
-  }
-  #ticket{
-    display: block !important;              /* CLAVE: el ticket ya no está oculto */
-    position: absolute;
-    left: 0; top: 0;
-    width: 80mm;                             /* ancho real */
-    padding: 2mm 3mm;
-    font-family: monospace;
-    font-size: 16px;
-    color: #000;
-    background: #fff;
-  }
+@media print {
+  @page { size: 80mm auto; margin: 0 }
+  body * { visibility: hidden !important; }
+  #ticket, #ticket * { visibility: visible !important; }
+}
+  #ticket {
+  display: block !important;
+  position: relative;        /* ya no absolute */
+  margin: 0 auto;            /* centrado horizontal */
+  width: 80mm;               /* ancho del rollo */
+  padding: 2mm 3mm;
+  font-family: monospace;
+  font-size: 16px;           /* tamaño de letra más grande */
+  color: #000;
+  background: #fff;
+  text-align: left;          /* texto alineado normal */
+}
 }
     .row-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     small.hint{color:#444}
