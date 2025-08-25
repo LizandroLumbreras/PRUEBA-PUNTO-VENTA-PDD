@@ -43,13 +43,36 @@
 
     /* Panel izquierdo */
     .panel-izq {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Tarjeta buscador */
+    .card-buscador {
+      background: rgba(255,255,255,0.95);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .card-buscador input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    /* Tarjeta productos con logo */
+    .card-productos {
+      flex: 1;
       background: rgba(255,255,255,0.92);
       border-radius: 12px;
       padding: 16px;
       position: relative;
       overflow: auto;
     }
-    .panel-izq::before {
+    .card-productos::before {
       content: "";
       position: absolute;
       top: 50%; left: 50%;
@@ -61,21 +84,6 @@
       pointer-events: none;
     }
 
-    /* Buscador */
-    .buscador {
-      position: relative;
-      z-index: 1;
-      margin-bottom: 12px;
-    }
-    .buscador input {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 15px;
-    }
-
-    /* Lista de productos */
     .lista-productos {
       position: relative;
       z-index: 1;
@@ -137,16 +145,18 @@
   <main>
     <!-- Panel izquierdo -->
     <section class="panel-izq">
-      <!-- Buscador arriba -->
-      <div class="buscador">
+      <!-- Tarjeta buscador -->
+      <div class="card-buscador">
         <input type="text" id="buscador" placeholder="🔍 Buscar producto por código o nombre...">
       </div>
 
-      <!-- Lista de productos -->
-      <div class="lista-productos" id="listaProductos">
-        <div class="item"><span>2x Coca Cola 600ml</span><span>$30.00</span></div>
-        <div class="item"><span>1x Sabritas 150g</span><span>$18.00</span></div>
-        <div class="item"><span>3x Agua Ciel 1L</span><span>$36.00</span></div>
+      <!-- Tarjeta productos -->
+      <div class="card-productos">
+        <div class="lista-productos" id="listaProductos">
+          <div class="item"><span>2x Coca Cola 600ml</span><span>$30.00</span></div>
+          <div class="item"><span>1x Sabritas 150g</span><span>$18.00</span></div>
+          <div class="item"><span>3x Agua Ciel 1L</span><span>$36.00</span></div>
+        </div>
       </div>
     </section>
 
