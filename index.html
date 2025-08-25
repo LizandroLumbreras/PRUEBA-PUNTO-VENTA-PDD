@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>POS – La Proveedora</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
     body {
       margin: 0;
@@ -18,20 +18,15 @@
 
     header {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      padding: 10px 20px;
+      justify-content: flex-end;
+      gap: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 8px 20px;
     }
-    header img {
-      height: 40px;
-    }
-    header .acciones button {
+    header button {
       background: #0c6cbd;
       border: none;
       padding: 8px 14px;
-      margin-left: 6px;
       border-radius: 6px;
       color: white;
       font-weight: 600;
@@ -41,97 +36,68 @@
     main {
       flex: 1;
       display: grid;
-      grid-template-columns: 2fr 1fr;
+      grid-template-columns: 3fr 1fr;
       gap: 16px;
       padding: 16px;
-      position: relative;
     }
 
-    /* Marca de agua */
-    main::before {
+    /* Panel izquierdo con logo */
+    .panel-izq {
+      background: rgba(255,255,255,0.92);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: auto;
+    }
+    .panel-izq::before {
       content: "";
       position: absolute;
       top: 50%; left: 50%;
       transform: translate(-50%,-50%);
       background: url("logo_proveedora.webp") no-repeat center;
       background-size: 300px;
-      opacity: 0.07;
+      opacity: 0.08;
       width: 100%; height: 100%;
       pointer-events: none;
-      z-index: 0;
     }
 
-    /* Panel productos */
-    .productos {
-      background: rgba(255,255,255,0.9);
-      border-radius: 12px;
-      padding: 16px;
-      overflow-y: auto;
+    /* Productos agregados */
+    .lista-productos {
       position: relative;
       z-index: 1;
     }
-    .grid-prod {
-      display: grid;
-      grid-template-columns: repeat(auto-fill,minmax(150px,1fr));
-      gap: 12px;
-    }
-    .card-prod {
-      background: white;
-      border-radius: 10px;
-      padding: 10px;
-      text-align: center;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .card-prod:hover {
-      background: #0c6cbd;
-      color: white;
-    }
-    .card-prod h4 {
-      margin: 6px 0;
-      font-size: 14px;
-    }
-    .card-prod p {
-      margin: 4px 0;
-      font-weight: 600;
+    .item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+      font-size: 15px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 6px;
+      margin-bottom: 6px;
     }
 
-    /* Panel carrito */
-    .carrito {
+    /* Panel derecho */
+    .panel-der {
       background: rgba(255,255,255,0.95);
       border-radius: 12px;
       padding: 16px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      z-index: 1;
-    }
-    .lista-carrito {
-      flex: 1;
-      overflow-y: auto;
-      margin-bottom: 12px;
-    }
-    .item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px;
-      border-bottom: 1px solid #ddd;
-      font-size: 14px;
     }
     .total {
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 12px;
       text-align: right;
     }
     .btn-cobrar {
       background: #22aa22;
-      color: white;
       border: none;
       padding: 12px;
       border-radius: 8px;
+      color: white;
       font-size: 18px;
       font-weight: 600;
       cursor: pointer;
@@ -140,7 +106,7 @@
     footer {
       background: rgba(0,0,0,0.7);
       color: white;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
       font-size: 13px;
     }
@@ -148,43 +114,33 @@
 </head>
 <body>
   <header>
-    <img src="logo_proveedora.webp" alt="Logo">
-    <div class="acciones">
-      <button>Corte de Caja</button>
-      <button>Cancelar Venta</button>
-      <button>Descuento</button>
-      <button>Salir</button>
-    </div>
+    <button>Corte de Caja</button>
+    <button>Cancelar Venta</button>
+    <button>Descuento</button>
+    <button>Salir</button>
   </header>
 
   <main>
-    <!-- Productos -->
-    <section class="productos">
-      <h3>Productos</h3>
-      <div class="grid-prod">
-        <div class="card-prod">
-          <h4>Coca Cola 600ml</h4>
-          <p>$15.00</p>
-        </div>
-        <div class="card-prod">
-          <h4>Sabritas 150g</h4>
-          <p>$18.00</p>
-        </div>
-        <div class="card-prod">
-          <h4>Agua Ciel 1L</h4>
-          <p>$12.00</p>
-        </div>
+    <!-- Panel izquierdo -->
+    <section class="panel-izq">
+      <div class="lista-productos">
+        <div class="item"><span>2x Coca Cola 600ml</span><span>$30.00</span></div>
+        <div class="item"><span>1x Sabritas 150g</span><span>$18.00</span></div>
+        <div class="item"><span>3x Agua Ciel 1L</span><span>$36.00</span></div>
       </div>
     </section>
 
-    <!-- Carrito -->
-    <aside class="carrito">
-      <div class="lista-carrito">
-        <div class="item"><span>2x Coca Cola</span><span>$30.00</span></div>
-        <div class="item"><span>1x Sabritas</span><span>$18.00</span></div>
+    <!-- Panel derecho -->
+    <aside class="panel-der">
+      <div>
+        <p><b>Fecha:</b> 25/08/2025</p>
+        <p><b># Venta:</b> 00001</p>
+        <p><b>Caj/Usu:</b> 3 / Gerardo</p>
       </div>
-      <div class="total">Total: $48.00</div>
-      <button class="btn-cobrar">💳 Cobrar</button>
+      <div>
+        <div class="total">Total: $84.00</div>
+        <button class="btn-cobrar">💳 Cobrar</button>
+      </div>
     </aside>
   </main>
 
