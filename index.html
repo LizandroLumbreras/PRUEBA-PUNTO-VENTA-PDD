@@ -1,181 +1,617 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POS – La Proveedora</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>POS – Ruta de Venta</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
-    body {
-      margin: 0;
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(to right,#00416A,#E4E5E6);
-      color: #111;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+    :root{
+      --azul:#00416A; --resalte:#0c6cbd; --ok:#1e8e3e; --bg-grad:linear-gradient(to right,#00416A,#E4E5E6);
+      --card: rgba(255,255,255,.9); --muted:rgba(0,0,0,.55); --shadow:0 6px 18px rgba(0,0,0,.18);
+      --radius:14px; --radius-sm:10px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:'Poppins',system-ui,Arial; color:#111; background:var(--bg-grad);
+      display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color: transparent;
     }
 
-    header {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      background: rgba(0,0,0,0.7);
-      padding: 8px 20px;
+    header{
+      position:sticky; top:0; z-index:50;
+      background:rgba(0,0,0,.6); color:#fff; padding:10px 14px; text-align:center; font-weight:700; font-size:18px;
+      backdrop-filter: saturate(120%) blur(4px);
     }
-    header button {
-      background: #0c6cbd;
-      border: none;
-      padding: 8px 14px;
-      border-radius: 6px;
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
+    .wrap{flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto}
+
+    .controls{ display:flex; flex-direction:column; gap:10px; }
+    .field{
+      display:flex; gap:8px; background:rgba(255,255,255,.12); padding:10px; border-radius:var(--radius-sm);
+      align-items:center; backdrop-filter: blur(2px);
+    }
+    .field label{min-width:78px; color:#fff; font-size:13px}
+    .field input,.field select{
+      flex:1; padding:10px 12px; border:none; border-radius:8px; font-size:15px; background:#fff; outline:none;
     }
 
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 3fr 1fr;
-      gap: 16px;
-      padding: 16px;
+    .searchbox{ position:relative }
+    .search-results{
+      position:absolute; left:90px; right:10px; top:calc(100% + 6px);
+      background:#fff; border-radius:12px; box-shadow:var(--shadow); max-height:260px; overflow:auto; display:none; z-index:30;
     }
+    .result-item{ padding:10px 12px; cursor:pointer; display:flex; justify-content:space-between; gap:8px }
+    .result-item small{ color:var(--muted) }
+    .result-item:hover{ background:#f2f4f7 }
 
-    /* Panel izquierdo */
-    .panel-izq {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+    .card{ background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+    table{ width:100%; border-collapse:collapse }
+    thead th{ background:var(--azul); color:#fff; padding:10px; font-size:13px; position:sticky; top:0 }
+    tbody td{ padding:8px; text-align:center; font-size:14px; border-top:1px solid #e7e7e7 }
+    .qty{ display:inline-flex; align-items:center; gap:6px; background:#f6f8fb; border-radius:999px; padding:4px 6px; }
+    .qty button{
+      width:26px; height:26px; border:none; border-radius:999px; cursor:pointer; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.12);
+      font-size:16px; line-height:26px;
     }
+    .remove{ border:none; background:transparent; cursor:pointer; color:#b10000; font-weight:700; font-size:18px; }
 
-    /* Tarjeta buscador */
-    .card-buscador {
-      background: rgba(255,255,255,0.95);
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    }
-    .card-buscador input {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 15px;
-    }
+    .totals{ display:flex; flex-direction:column; gap:6px; padding:12px 14px; background:#fff; }
+    .row{ display:flex; justify-content:space-between; align-items:center; font-size:15px }
+    .row.muted{ color:var(--muted) }
+    .row.big{ font-weight:700; font-size:18px }
+    .save{ color:var(--ok); font-weight:600 }
 
-    /* Tarjeta productos con logo */
-    .card-productos {
-      flex: 1;
-      background: rgba(255,255,255,0.92);
-      border-radius: 12px;
-      padding: 16px;
-      position: relative;
-      overflow: auto;
+    .actions{ padding:6px 0 12px }
+    .btn{
+      width:100%; border:none; padding:14px; border-radius:12px; font-size:18px; font-weight:700; color:#fff;
+      background: linear-gradient(180deg, var(--resalte), #094d85); box-shadow: var(--shadow); cursor:pointer;
     }
-    .card-productos::before {
-      content: "";
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%,-50%);
-      background: url("logo_proveedora.webp") no-repeat center;
-      background-size: 300px;
-      opacity: 0.08;
-      width: 100%; height: 100%;
-      pointer-events: none;
-    }
+    .btn:active{ transform: translateY(1px) }
 
-    .lista-productos {
-      position: relative;
-      z-index: 1;
-    }
-    .item {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px;
-      border-bottom: 1px solid #ddd;
-      font-size: 15px;
-      background: rgba(255,255,255,0.8);
-      border-radius: 6px;
-      margin-bottom: 8px;
-    }
+    #modalCobro{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:80; align-items:center; justify-content:center; }
+    .modal-card{ width:min(520px,92vw); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
+    .modal-h{ padding:12px 16px; background:#0c6cbd; color:#fff; font-weight:700; }
+    .modal-b{ padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+    .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
 
-    /* Panel derecho */
-    .panel-der {
-      background: rgba(255,255,255,0.95);
-      border-radius: 12px;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .total {
-      font-size: 20px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      text-align: right;
-    }
-    .btn-cobrar {
-      background: #22aa22;
-      border: none;
-      padding: 12px;
-      border-radius: 8px;
-      color: white;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    footer {
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 6px;
-      text-align: center;
-      font-size: 13px;
+    #ticketArea{ display:none; }
+    @media print{
+      body *{ visibility:hidden !important; }
+      #ticketArea, #ticketArea *{ visibility:visible !important; }
+      #ticketArea{ position:fixed; inset:0; margin:0; padding:0; }
+      .ticket{
+        width: 58mm;  /* cambia a 80mm si usas rollo 80 */
+        font: 12px/1.25 'Poppins', system-ui, sans-serif;
+        color:#000;
+      }
+      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
+      .ticket .t-center{ text-align:center; }
+      .ticket .t-strong{ font-weight:700; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <button>Corte de Caja</button>
-    <button>Cancelar Venta</button>
-    <button>Descuento</button>
-    <button>Salir</button>
-  </header>
+  <header>POS – Ruta de Venta</header>
 
-  <main>
-    <!-- Panel izquierdo -->
-    <section class="panel-izq">
-      <!-- Tarjeta buscador -->
-      <div class="card-buscador">
-        <input type="text" id="buscador" placeholder="🔍 Buscar producto por código o nombre...">
+  <main class="wrap">
+    <section class="controls">
+      <div class="field">
+        <label>Cliente</label>
+        <input id="cliente" type="text" placeholder="Nombre del cliente"/>
       </div>
 
-      <!-- Tarjeta productos -->
-      <div class="card-productos">
-        <div class="lista-productos" id="listaProductos">
-          <div class="item"><span>2x Coca Cola 600ml</span><span>$30.00</span></div>
-          <div class="item"><span>1x Sabritas 150g</span><span>$18.00</span></div>
-          <div class="item"><span>3x Agua Ciel 1L</span><span>$36.00</span></div>
-        </div>
+      <div class="field">
+        <label>Precio</label>
+        <select id="tipoPrecio">
+          <option value="publico">Público</option>
+          <option value="medio">1/2 Mayoreo</option>
+          <option value="mayoreo">Mayoreo</option>
+        </select>
+      </div>
+
+      <div class="field searchbox">
+        <label>Buscar</label>
+        <input id="buscador" type="text" placeholder="Escribe o escanea código…">
+        <div id="resultados" class="search-results"></div>
       </div>
     </section>
 
-    <!-- Panel derecho -->
-    <aside class="panel-der">
-      <div>
-        <p><b>Fecha:</b> 25/08/2025</p>
-        <p><b># Venta:</b> 00001</p>
-        <p><b>Caj/Usu:</b> 3 / Gerardo</p>
+    <section class="card">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left">Producto</th>
+            <th>Cant.</th>
+            <th>Precio</th>
+            <th>Importe</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="totals">
+        <div class="row muted"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
+        <div class="row save" id="rowAhorro" style="display:none;"><span>Usted ahorró</span><span id="lblAhorro">$0.00</span></div>
+        <div class="row big"><span>Total</span><span id="lblTotal">$0.00</span></div>
       </div>
-      <div>
-        <div class="total">Total: $84.00</div>
-        <button class="btn-cobrar">💳 Cobrar</button>
-      </div>
-    </aside>
+    </section>
+
+    <section class="actions">
+      <button class="btn" id="btnCobrar">Cobrar</button>
+    </section>
   </main>
 
-  <footer>
-    [F1] Consulta · [F2] Precios · [F4] Tickets · [F5] Clientes · [F12] Cobrar
-  </footer>
+  <!-- Modal Cobro -->
+  <div id="modalCobro">
+    <div class="modal-card">
+      <div class="modal-h">Cobrar</div>
+      <div class="modal-b">
+        <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:700;">
+          <span>Total</span><span id="cobroTotal">$0.00</span>
+        </div>
+
+        <label style="font-weight:600;">Método de pago</label>
+        <select id="metodoPago">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="mixto">Mixto</option>
+        </select>
+
+        <div id="bloqueEfectivo" style="display:block;">
+          <label style="font-weight:600; margin-top:6px;">Recibido</label>
+          <input id="montoRecibido" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
+          <div style="display:flex; justify-content:space-between; margin-top:6px;">
+            <span style="color:#555;">Cambio</span><strong id="montoCambio">$0.00</strong>
+          </div>
+        </div>
+
+        <label style="font-weight:600; margin-top:6px;">Notas (opcional)</label>
+        <input id="notasCobro" type="text" placeholder="Folio bancario / referencia">
+
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button id="btnCancelarCobro" style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd; background:#fff; font-weight:700;">Cancelar</button>
+          <button id="btnConfirmarCobro" style="flex:1; padding:12px; border-radius:12px; border:none; background:linear-gradient(180deg,#0c6cbd,#094d85); color:#fff; font-weight:700;">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticket imprimible -->
+  <div id="ticketArea">
+    <div id="ticket" class="ticket">
+      <div class="t-center t-strong">La Proveedora</div>
+      <div class="t-center">Ruta de Venta</div>
+      <div class="t-center" id="tFolio"></div>
+      <div class="t-center" id="tFecha"></div>
+      <hr>
+      <div id="tCliente"></div>
+      <div>Tipo precio: <span id="tTipo"></span></div>
+      <hr>
+      <div id="tLineas"></div>
+      <hr>
+      <div style="display:flex; justify-content:space-between;"><span>Subtotal</span><span id="tSubtotal"></span></div>
+      <div style="display:flex; justify-content:space-between;" id="tAhorroRow"><span>Usted ahorró</span><span id="tAhorro"></span></div>
+      <div style="display:flex; justify-content:space-between; font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
+      <hr>
+      <div>Método: <span id="tMetodo"></span></div>
+      <div id="tRecibidoRow">Recibido: <span id="tRecibido"></span> · Cambio: <span id="tCambio"></span></div>
+      <div id="tNotas"></div>
+      <div class="t-center" style="margin-top:8px;">¡Gracias por su compra!</div>
+    </div>
+  </div>
+
+  <!-- App + Firebase (módulos) -->
+  <script type="module">
+    /***** === Firebase Setup === *****/
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getFirestore, collection, addDoc, serverTimestamp, runTransaction, doc,
+      getDocs
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+      authDomain: "inventariopv-643f1.firebaseapp.com",
+      projectId: "inventariopv-643f1",
+      storageBucket: "inventariopv-643f1.firebasestorage.app",
+      messagingSenderId: "96242533231",
+      appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+
+    /***** === POS Estado/UI === *****/
+    const $ = (sel)=>document.querySelector(sel);
+    const elCliente = $('#cliente'), elTipo = $('#tipoPrecio'), elBuscador = $('#buscador');
+    const elResultados = $('#resultados'), elTbody = $('#tbody');
+    const lblSubtotal = $('#lblSubtotal'), lblTotal = $('#lblTotal'), lblAhorro = $('#lblAhorro'), rowAhorro = $('#rowAhorro');
+    const btnCobrar = $('#btnCobrar');
+
+    const money = (n)=>'$'+(Number(n)||0).toFixed(2);
+    let carrito = [];
+
+    // === Catálogo cargado de Firestore ===
+    /** catalogo: [{id, nombre, codigo, precioPublico, medioMayoreo, mayoreo, equivalentes:[]}, ...]
+     *  codeIndex: Map(codigo|equivalente -> id)
+     */
+    let catalogo = [];
+    const codeIndex = new Map();
+
+    // Carga productos activos y construye índice de equivalencias
+    async function cargarCatalogoDesdeFirestore(){
+      catalogo = [];
+      codeIndex.clear();
+
+      // 1) Productos
+      const prodSnap = await getDocs(collection(db, 'productos'));
+      prodSnap.forEach(d=>{
+        const x = d.data();
+        if (x.activo !== true) return; // SOLO activos:true
+
+        const prod = {
+          id: d.id,
+          nombre: x.concepto || 'SIN NOMBRE',
+          codigo: x.codigoBarra || '',
+          precioPublico: Number(x.precioPublico || 0),
+          medioMayoreo: Number(x.medioMayoreo || 0),
+          mayoreo: Number(x.mayoreo || 0),
+          equivalentes: []
+        };
+        catalogo.push(prod);
+
+        if(prod.codigo) codeIndex.set(String(prod.codigo).trim(), prod.id);
+      });
+
+      // 2) Equivalencias (opcional): {codigo: "<alt>", principal: "<codigoBarra>"}
+      try{
+        const eqSnap = await getDocs(collection(db, 'equivalencias'));
+        eqSnap.forEach(d=>{
+          const e = d.data();
+          const alt = (e.codigo||'').toString().trim();
+          const principal = (e.principal||'').toString().trim();
+          if(!alt || !principal) return;
+          const prod = catalogo.find(p => String(p.codigo).trim() === principal);
+          if(prod){
+            codeIndex.set(alt, prod.id);
+            prod.equivalentes.push(alt);
+          }
+        });
+      }catch(err){
+        console.warn('equivalencias (opcional):', err?.message);
+      }
+    }
+
+    // Precio según tipo
+    function precioSegunTipo(prod){
+      if(elTipo.value === 'publico') return prod.precioPublico;
+      if(elTipo.value === 'medio')   return prod.medioMayoreo || prod.precioPublico;
+      if(elTipo.value === 'mayoreo') return prod.mayoreo || prod.medioMayoreo || prod.precioPublico;
+      return prod.precioPublico;
+    }
+
+    function saveState(){
+      localStorage.setItem('pos_ruta_carrito', JSON.stringify(carrito));
+      localStorage.setItem('pos_ruta_tipoPrecio', elTipo.value);
+      localStorage.setItem('pos_ruta_cliente', elCliente.value);
+    }
+    function loadState(){
+      try{
+        const c = JSON.parse(localStorage.getItem('pos_ruta_carrito')||'[]');
+        const t = localStorage.getItem('pos_ruta_tipoPrecio')||'publico';
+        const cli = localStorage.getItem('pos_ruta_cliente')||'';
+        carrito = Array.isArray(c) ? c : [];
+        elTipo.value = t; elCliente.value = cli;
+      }catch{}
+    }
+
+    function addProduct(prod){
+      if(!prod) return;
+      const precio = precioSegunTipo(prod);
+      const existente = carrito.find(x=>x.id===prod.id);
+      if(existente){
+        existente.cantidad += 1;
+        existente.precioUnit = precio;
+        existente.importe = +(existente.cantidad * existente.precioUnit).toFixed(2);
+      }else{
+        carrito.push({
+          id: prod.id,
+          nombre: prod.nombre,
+          cantidad: 1,
+          precioPublico: prod.precioPublico,
+          medioMayoreo: prod.medioMayoreo,
+          mayoreo: prod.mayoreo,
+          precioUnit: precio,
+          importe: +precio.toFixed(2)
+        });
+      }
+      render();
+    }
+
+    function setCantidad(id, nuevaCant){
+      const it = carrito.find(x=>x.id===id);
+      if(!it) return;
+      it.cantidad = Math.max(1, nuevaCant);
+      // recalcular precio con tipo actual
+      const base = {precioPublico: it.precioPublico, medioMayoreo: it.medioMayoreo, mayoreo: it.mayoreo};
+      it.precioUnit = precioSegunTipo(base);
+      it.importe = +(it.cantidad * it.precioUnit).toFixed(2);
+      render();
+    }
+    function delItem(id){ carrito = carrito.filter(x=>x.id!==id); render(); }
+    function recalcPreciosPorTipo(){
+      carrito.forEach(it=>{
+        const base = {precioPublico: it.precioPublico, medioMayoreo: it.medioMayoreo, mayoreo: it.mayoreo};
+        it.precioUnit = precioSegunTipo(base);
+        it.importe = +(it.cantidad * it.precioUnit).toFixed(2);
+      });
+      render();
+    }
+
+    function render(){
+      elTbody.innerHTML = '';
+      let subtotal = 0, totalPublicoEquivalente = 0;
+
+      carrito.forEach(it=>{
+        subtotal += it.importe;
+        totalPublicoEquivalente += it.cantidad * it.precioPublico;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="text-align:left">${it.nombre}</td>
+          <td>
+            <div class="qty">
+              <button type="button">−</button>
+              <span>${it.cantidad}</span>
+              <button type="button">+</button>
+            </div>
+          </td>
+          <td>${money(it.precioUnit)}</td>
+          <td>${money(it.importe)}</td>
+          <td><button class="remove">×</button></td>`;
+        const [btnMenos, , btnMas] = tr.querySelectorAll('button');
+        btnMenos.onclick = ()=> setCantidad(it.id, it.cantidad - 1);
+        btnMas.onclick = ()=> setCantidad(it.id, it.cantidad + 1);
+        tr.querySelector('.remove').onclick = ()=> delItem(it.id);
+        elTbody.appendChild(tr);
+      });
+
+      const ahorro = Math.max(0, totalPublicoEquivalente - subtotal);
+      lblSubtotal.textContent = money(subtotal);
+      lblTotal.textContent = money(subtotal);
+      lblAhorro.textContent = money(ahorro);
+      rowAhorro.style.display = (elTipo.value==='publico' || ahorro<=0) ? 'none' : 'flex';
+      saveState();
+    }
+
+    // === Buscador con equivalencias ===
+    function normaliza(s){ return (s||'').toString().trim().toLowerCase(); }
+
+    function buscarLocal(query){
+      const q = (query||'').trim();
+      if(!q) return [];
+
+      // 1) Match directo por código (principal o equivalente)
+      const idByCode = codeIndex.get(q);
+      if(idByCode){
+        const p = catalogo.find(x=>x.id===idByCode);
+        if(p) return [p];
+      }
+
+      // 2) Por nombre contiene (concepto)
+      const nq = normaliza(q);
+      const porNombre = catalogo.filter(p => normaliza(p.nombre).includes(nq));
+      if(porNombre.length) return porNombre.slice(0, 40);
+
+      // 3) Por fragmento de código (principal o equivalentes)
+      if(/^[A-Za-z0-9\-]{3,}$/.test(q)){
+        const porCodigoParcial = catalogo.filter(p=>{
+          const cod = (p.codigo||'').toString();
+          if(cod.includes(q)) return true;
+          return (p.equivalentes||[]).some(eq => (eq||'').toString().includes(q));
+        });
+        if(porCodigoParcial.length) return porCodigoParcial.slice(0, 40);
+      }
+
+      return [];
+    }
+
+    function pintarResultados(hits){
+      elResultados.innerHTML = '';
+      if(hits.length===0){ elResultados.style.display='none'; return; }
+      elResultados.style.display='block';
+      hits.forEach(p=>{
+        const precio = precioSegunTipo(p);
+        const div = document.createElement('div');
+        div.className='result-item';
+        const sub = p.codigo ? `<small>${p.codigo}</small>` : '<small>&nbsp;</small>';
+        div.innerHTML = `<span>${p.nombre}</span><span>${sub} ${money(precio)}</span>`;
+        div.onclick = ()=>{
+          addProduct(p);
+          elResultados.style.display='none';
+          elBuscador.value='';
+        };
+        elResultados.appendChild(div);
+      });
+    }
+
+    elBuscador.addEventListener('input', ()=>{
+      pintarResultados(buscarLocal(elBuscador.value));
+    });
+
+    // Enter: si hay único match, agregar (útil con escáner)
+    elBuscador.addEventListener('keydown', (ev)=>{
+      if(ev.key === 'Enter'){
+        const hits = buscarLocal(elBuscador.value);
+        if(hits.length===1){
+          addProduct(hits[0]);
+          elResultados.style.display='none';
+          elBuscador.value='';
+        }
+      }
+    });
+
+    document.addEventListener('click', (e)=>{
+      if(!e.target.closest('.searchbox')) elResultados.style.display='none';
+    });
+
+    /***** === Cobro + Guardado en Firestore === *****/
+    const modalCobro = document.getElementById('modalCobro');
+    const cobroTotal = document.getElementById('cobroTotal');
+    const metodoPago = document.getElementById('metodoPago');
+    const bloqueEfectivo = document.getElementById('bloqueEfectivo');
+    const montoRecibido = document.getElementById('montoRecibido');
+    const montoCambio = document.getElementById('montoCambio');
+    const notasCobro = document.getElementById('notasCobro');
+
+    function abrirCobro(){
+      if(carrito.length===0){ alert('Agrega productos primero'); return; }
+      const total = carrito.reduce((t,p)=> t+p.importe, 0);
+      cobroTotal.textContent = money(total);
+      montoRecibido.value = '';
+      montoCambio.textContent = money(0);
+      notasCobro.value = '';
+      metodoPago.value = 'efectivo';
+      bloqueEfectivo.style.display = 'block';
+      modalCobro.style.display = 'flex';
+      setTimeout(()=>montoRecibido.focus(), 50);
+    }
+    function cerrarCobro(){ modalCobro.style.display = 'none'; }
+    metodoPago.addEventListener('change', ()=>{
+      const isCash = metodoPago.value === 'efectivo' || metodoPago.value === 'mixto';
+      bloqueEfectivo.style.display = isCash ? 'block' : 'none';
+    });
+    montoRecibido.addEventListener('input', ()=>{
+      const total = carrito.reduce((t,p)=> t+p.importe, 0);
+      const recibido = parseFloat(montoRecibido.value || '0');
+      const cambio = Math.max(0, recibido - total);
+      montoCambio.textContent = money(cambio);
+    });
+
+    // Consecutivo y guardado
+    const rutaId = 'ruta_1';
+    async function getNextFolio(db){
+      const ref = doc(db, 'consecutivos', rutaId);
+      const folio = await runTransaction(db, async (tx)=>{
+        const snap = await tx.get(ref);
+        if(!snap.exists()){
+          tx.set(ref, { valor: 1, actualizado: serverTimestamp() });
+          return 1;
+        }else{
+          const actual = Number(snap.data().valor || 0) + 1;
+          tx.update(ref, { valor: actual, actualizado: serverTimestamp() });
+          return actual;
+        }
+      });
+      return `RV-${String(folio).padStart(6,'0')}`;
+    }
+    async function guardarVentaEnFirestore(payload){
+      const col = collection(db, 'rutas_venta', rutaId, 'ventas');
+      const docRef = await addDoc(col, payload);
+      return docRef.id;
+    }
+
+    function rellenarTicket({folio, fechaTxt, clienteTxt, tipoTxt, total, subtotal, ahorro, metodo, recibido, cambio, notas}){
+      document.getElementById('tFolio').textContent = `Folio: ${folio}`;
+      document.getElementById('tFecha').textContent = fechaTxt;
+      document.getElementById('tCliente').textContent = `Cliente: ${clienteTxt}`;
+      document.getElementById('tTipo').textContent = tipoTxt;
+
+      const tLineas = document.getElementById('tLineas');
+      tLineas.innerHTML = '';
+      carrito.forEach(it=>{
+        const div = document.createElement('div');
+        div.innerHTML = `<div style="display:flex; justify-content:space-between;">
+            <span>${it.nombre} x${it.cantidad}</span>
+            <span>${money(it.importe)}</span>
+          </div>`;
+        tLineas.appendChild(div);
+      });
+
+      document.getElementById('tSubtotal').textContent = money(subtotal);
+      document.getElementById('tTotal').textContent = money(total);
+      const ahorroRow = document.getElementById('tAhorroRow');
+      const mostrarAhorro = (elTipo.value!=='publico' && ahorro>0);
+      ahorroRow.style.display = mostrarAhorro ? 'flex' : 'none';
+      if(mostrarAhorro) document.getElementById('tAhorro').textContent = money(ahorro);
+
+      document.getElementById('tMetodo').textContent = metodo.toUpperCase();
+      const rRow = document.getElementById('tRecibidoRow');
+      if(metodo==='efectivo' || metodo==='mixto'){
+        rRow.style.display='block';
+        document.getElementById('tRecibido').textContent = money(recibido);
+        document.getElementById('tCambio').textContent = money(cambio);
+      }else{
+        rRow.style.display='none';
+      }
+      document.getElementById('tNotas').textContent = notas ? `Notas: ${notas}` : '';
+    }
+
+    async function confirmarCobro(){
+      try{
+        const total = carrito.reduce((t,p)=> t+p.importe, 0);
+        const subtotal = total;
+        const totalPublico = carrito.reduce((t,p)=> t + p.cantidad*p.precioPublico, 0);
+        const ahorro = Math.max(0, totalPublico - total);
+
+        const tipoTxt = elTipo.options[elTipo.selectedIndex].text;
+        const clienteTxt = elCliente.value || 'Mostrador';
+        const metodo = metodoPago.value;
+        const recibido = parseFloat(montoRecibido.value || '0');
+        const cambio = Math.max(0, recibido - total);
+        const notas = (notasCobro.value || '').trim();
+
+        const folio = await getNextFolio(db);
+        const fecha = new Date();
+        const fechaTxt = fecha.toLocaleString();
+
+        const venta = {
+          folio, rutaId,
+          fecha: serverTimestamp(), fecha_txt: fechaTxt,
+          cliente: clienteTxt,
+          tipo_precio: elTipo.value,
+          metodo_pago: metodo,
+          recibido: (metodo==='efectivo'||metodo==='mixto') ? recibido : 0,
+          cambio:   (metodo==='efectivo'||metodo==='mixto') ? cambio   : 0,
+          notas, subtotal, total, ahorro,
+          detalle: carrito.map(it=>({
+            id: it.id, nombre: it.nombre, cantidad: it.cantidad,
+            precio_unit: it.precioUnit, importe: it.importe,
+            precio_publico: it.precioPublico,
+            medio_mayoreo: it.medioMayoreo,
+            mayoreo: it.mayoreo
+          }))
+        };
+
+        const docId = await guardarVentaEnFirestore(venta);
+
+        rellenarTicket({folio, fechaTxt, clienteTxt, tipoTxt, total, subtotal, ahorro, metodo, recibido, cambio, notas});
+        window.print();
+
+        carrito = [];
+        render();
+        cerrarCobro();
+
+        const ventas = JSON.parse(localStorage.getItem('pos_ruta_ventas')||'[]');
+        ventas.push({docId, ...venta, fecha_txt: fechaTxt});
+        localStorage.setItem('pos_ruta_ventas', JSON.stringify(ventas));
+      }catch(err){
+        console.error(err);
+        alert('No se pudo guardar la venta en Firebase. Revisa conexión y vuelve a intentar.');
+      }
+    }
+
+    // Botones
+    btnCobrar.onclick = abrirCobro;
+    document.getElementById('btnCancelarCobro').onclick = cerrarCobro;
+    document.getElementById('btnConfirmarCobro').onclick = confirmarCobro;
+    elTipo.addEventListener('change', recalcPreciosPorTipo);
+
+    // Init
+    await cargarCatalogoDesdeFirestore();   // carga productos + equivalencias
+    loadState();
+    recalcPreciosPorTipo();                 // hace render()
+  </script>
 </body>
 </html>
