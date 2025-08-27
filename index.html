@@ -20,9 +20,16 @@
 
     header{
       position:sticky; top:0; z-index:50;
-      background:rgba(0,0,0,.6); color:#fff; padding:10px 14px; text-align:center; font-weight:700; font-size:18px;
+      background:rgba(0,0,0,.6); color:#fff; padding:10px 14px;
+      display:flex; justify-content:center; align-items:center; gap:8px;
+      font-weight:700; font-size:18px;
       backdrop-filter: saturate(120%) blur(4px);
     }
+    header img{
+      height:34px; /* tamaño pequeño */
+      filter: drop-shadow(0 0 2px rgba(0,0,0,.4));
+    }
+
     .wrap{flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto}
 
     .controls{ display:flex; flex-direction:column; gap:10px; }
@@ -31,7 +38,7 @@
       align-items:center; backdrop-filter: blur(2px);
     }
     .field label{min-width:78px; color:#fff; font-size:13px}
-    .field input,.field select{
+    .field input{
       flex:1; padding:10px 12px; border:none; border-radius:8px; font-size:15px; background:#fff; outline:none;
     }
 
@@ -59,7 +66,6 @@
     .row{ display:flex; justify-content:space-between; align-items:center; font-size:15px }
     .row.muted{ color:var(--muted) }
     .row.big{ font-weight:700; font-size:18px }
-    .save{ color:var(--ok); font-weight:600 }
 
     .actions{ padding:6px 0 12px }
     .btn{
@@ -74,54 +80,36 @@
     .modal-b{ padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
 
-/* Ticket oculto en pantalla */
-#ticketArea{ display:none; }
+    /* Ticket oculto en pantalla */
+    #ticketArea{ display:none; }
 
-/* Al imprimir, mostrar SOLO el ticket */
-@media print{
-  /* Oculta todo */
-  body *{ display: none !important; }
-
-  /* Muestra el ticket */
-  #ticketArea, #ticketArea *{
-    display: block !important;
-  }
-
-  #ticketArea{
-    position: static !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  .ticket{
-    width: 58mm;  /* cambia a 80mm si usas rollo 80 */
-    font: 12px/1.25 'Poppins', system-ui, sans-serif;
-    color:#000;
-  }
-  .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
-  .ticket .t-center{ text-align:center; }
-  .ticket .t-strong{ font-weight:700; }
-}
-
+    /* Al imprimir, mostrar SOLO el ticket */
+    @media print{
+      body *{ display: none !important; }
+      #ticketArea, #ticketArea *{ display: block !important; }
+      #ticketArea{ position: static !important; margin: 0 !important; padding: 0 !important; }
+      .ticket{
+        width: 58mm;
+        font: 12px/1.25 'Poppins', system-ui, sans-serif;
+        color:#000;
+      }
+      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
+      .ticket .t-center{ text-align:center; }
+      .ticket .t-strong{ font-weight:700; }
+    }
   </style>
 </head>
 <body>
-  <header>POS – Ruta de Venta</header>
+  <header>
+    <span>POS – Ruta de Venta</span>
+    <img src="logo_proveedora.webp" alt="Logo">
+  </header>
 
   <main class="wrap">
     <section class="controls">
       <div class="field">
         <label>Cliente</label>
         <input id="cliente" type="text" placeholder="Nombre del cliente"/>
-      </div>
-
-      <div class="field">
-        <label>Precio</label>
-        <select id="tipoPrecio">
-          <option value="publico">Público</option>
-          <option value="medio">1/2 Mayoreo</option>
-          <option value="mayoreo">Mayoreo</option>
-        </select>
       </div>
 
       <div class="field searchbox">
@@ -147,58 +135,24 @@
 
       <div class="totals">
         <div class="row muted"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
-        <div class="row save" id="rowAhorro" style="display:none;"><span>Usted ahorró</span><span id="lblAhorro">$0.00</span></div>
         <div class="row big"><span>Total</span><span id="lblTotal">$0.00</span></div>
       </div>
     </section>
-   
+
     <section class="actions">
-  <button class="btn" id="btnCobrar">Cobrar</button>
-  <button class="btn" id="btnCorte" style="margin-top:10px;background:linear-gradient(180deg,#1e8e3e,#146329);">
-    Corte del día
-  </button>
-</section>
+      <button class="btn" id="btnCobrar">Cobrar</button>
+      <button class="btn" id="btnCorte" style="margin-top:10px;background:linear-gradient(180deg,#1e8e3e,#146329);">
+        Corte del día
+      </button>
+    </section>
   </main>
-
-  <!-- Modal Cobro -->
-  <div id="modalCobro">
-    <div class="modal-card">
-      <div class="modal-h">Cobrar</div>
-      <div class="modal-b">
-        <div style="display:flex; justify-content:space-between; font-size:18px; font-weight:700;">
-          <span>Total</span><span id="cobroTotal">$0.00</span>
-        </div>
-
-        <label style="font-weight:600;">Método de pago</label>
-        <select id="metodoPago">
-          <option value="efectivo">Efectivo</option>
-          <option value="tarjeta">Tarjeta</option>
-          <option value="transferencia">Transferencia</option>
-          <option value="mixto">Mixto</option>
-        </select>
-
-        <div id="bloqueEfectivo" style="display:block;">
-          <label style="font-weight:600; margin-top:6px;">Recibido</label>
-          <input id="montoRecibido" type="number" inputmode="decimal" step="0.01" placeholder="0.00">
-          <div style="display:flex; justify-content:space-between; margin-top:6px;">
-            <span style="color:#555;">Cambio</span><strong id="montoCambio">$0.00</strong>
-          </div>
-        </div>
-
-        <label style="font-weight:600; margin-top:6px;">Notas (opcional)</label>
-        <input id="notasCobro" type="text" placeholder="Folio bancario / referencia">
-
-        <div style="display:flex; gap:10px; margin-top:10px;">
-          <button id="btnCancelarCobro" style="flex:1; padding:12px; border-radius:12px; border:1px solid #ddd; background:#fff; font-weight:700;">Cancelar</button>
-          <button id="btnConfirmarCobro" style="flex:1; padding:12px; border-radius:12px; border:none; background:linear-gradient(180deg,#0c6cbd,#094d85); color:#fff; font-weight:700;">Confirmar</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- Ticket imprimible -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
+      <div class="t-center">
+        <img src="logo_proveedora.webp" alt="Logo" style="max-width:140px; margin-bottom:6px;">
+      </div>
       <div class="t-center t-strong">La Proveedora</div>
       <div class="t-center">Ruta de Venta</div>
       <div class="t-center" id="tFolio"></div>
@@ -210,7 +164,6 @@
       <div id="tLineas"></div>
       <hr>
       <div style="display:flex; justify-content:space-between;"><span>Subtotal</span><span id="tSubtotal"></span></div>
-      <div style="display:flex; justify-content:space-between;" id="tAhorroRow"><span>Usted ahorró</span><span id="tAhorro"></span></div>
       <div style="display:flex; justify-content:space-between; font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
       <hr>
       <div>Método: <span id="tMetodo"></span></div>
