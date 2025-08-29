@@ -98,45 +98,75 @@
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
     body.modal-open{ overflow:hidden; }
 
-    /* ===== IMPRESIÓN DEL TICKET ===== */
-    #ticketArea{ display:none; }
+/* ===== IMPRESIÓN DEL TICKET (reemplazo completo) ===== */
+#ticketArea{ display:none; }
 
-    @media print{
-      @page{ size: 58mm auto; margin: 0; }
-      html, body{ background:#fff!important; height:auto!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      body *{ visibility:hidden!important; }
-      #ticketArea, #ticketArea *{ visibility:visible!important; }
-      #ticketArea{
-        position:fixed; inset:0;
-        display:block!important;
-        background:#fff!important;
-        padding:0; margin:0;
-        z-index:99999;
-      }
-      .ticket{
-        width:58mm;
-        margin:0;
-        padding:0 2mm;
-        box-sizing:border-box;
-        font:13px/1.25 'Poppins',system-ui,sans-serif;
-        color:#000;
-        overflow:hidden;
-        text-align:left;
-      }
-      .ticket .t-header{ text-align:center; margin:2px 0; }
-      .ticket img{ display:inline-block; max-width:140px; height:auto; }
-      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
-      .ticket .t-row{
-        display:flex!important; justify-content:space-between;
-        align-items:center; gap:6px; white-space:nowrap!important; margin:2px 0;
-      }
-      .ticket .t-desc{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap!important; text-align:left; }
-      .ticket .t-imp{ flex:0 0 auto; text-align:right; white-space:nowrap!important; margin-left:8px; }
-      .ticket .t-totals{ text-align:right; }
-      .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
-      .ticket .t-totals .value{ min-width:58px; text-align:right; }
-      .ticket .t-thanks{ text-align:center; margin-top:8px; }
-    }
+@media print{
+  /* Parámetros rápidos */
+  :root{
+    --ticket-mm: 58;      /* 58 para rollo 58mm, usa 72 si es impresora 80mm */
+    --ticket-pad-mm: 1;   /* padding lateral en mm (0–2) */
+    --ticket-font: 14px;  /* tamaño base de letra */
+    --line-height: 1.28;
+  }
+
+  @page{
+    size: calc(var(--ticket-mm) * 1mm) auto;
+    margin: 0;
+  }
+
+  html, body{
+    background:#fff !important;
+    height:auto !important;
+    width: calc(var(--ticket-mm) * 1mm);
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body *{ visibility: hidden !important; }
+
+  #ticketArea, #ticketArea *{ visibility: visible !important; }
+  #ticketArea{
+    position: fixed; inset: 0;
+    display: block !important;
+    background: #fff !important;
+    padding: 0; margin: 0;
+    z-index: 99999;
+  }
+
+  .ticket{
+    width: calc(var(--ticket-mm) * 1mm);
+    margin: 0;
+    padding: 0 calc(var(--ticket-pad-mm) * 1mm);
+    box-sizing: border-box;
+    font: var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif;
+    color: #000;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  .ticket .t-header{ text-align:center; margin:2px 0; }
+  .ticket img{ display:inline-block; max-width:100%; height:auto; } /* ocupa todo el ancho si hace falta */
+  .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
+
+  .ticket .t-row{
+    display:flex !important; justify-content:space-between;
+    align-items:center; gap:6px; white-space:nowrap !important; margin:2px 0;
+  }
+  .ticket .t-desc{
+    flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap !important; text-align:left;
+  }
+  .ticket .t-imp{ flex:0 0 auto; text-align:right; white-space:nowrap !important; margin-left:8px; }
+
+  .ticket .t-totals{ text-align:right; }
+  .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
+  .ticket .t-totals .value{ min-width:58px; text-align:right; }
+
+  .ticket .t-thanks{ text-align:center; margin-top:8px; }
+}
   </style>
 </head>
 <body>
