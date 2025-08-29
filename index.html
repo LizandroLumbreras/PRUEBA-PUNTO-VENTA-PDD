@@ -574,14 +574,16 @@ document.getElementById('tTotal').textContent = money(total);
           metodo_pago: metodo,
           recibido: (metodo==='efectivo'||metodo==='mixto') ? recibido : 0,
           cambio:   (metodo==='efectivo'||metodo==='mixto') ? cambio   : 0,
-          subtotal, iva, total,
+         subtotal, impuestos, total,   // 👈 aquí está la corrección
           notas,
-          detalle: carrito.map(it=>({
-            id: it.id, nombre: it.nombre, cantidad: it.cantidad,
-            precio_unit: it.precioUnit, importe: it.importe,
-            iva_tasa: Number(it.ivaTasa||0), precio_publico: it.precioPublico
-          }))
-        };
+  detalle: carrito.map(it=>({
+    id: it.id, nombre: it.nombre, cantidad: it.cantidad,
+    precio_unit: it.precioUnit, importe: it.importe,
+    iva_tasa: Number(it.ivaTasa||0), 
+    ieps_tasa: Number(it.iepsTasa||0),   // puedes guardar también el ieps si quieres
+    precio_publico: it.precioPublico
+  }))
+};
 
         const docId = await guardarVentaEnFirestore(venta);
 
