@@ -98,20 +98,21 @@
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
     body.modal-open{ overflow:hidden; }
 
-/* ===== IMPRESIÓN DEL TICKET (reemplazo completo) ===== */
+/* ===== IMPRESIÓN DEL TICKET (versión correcta) ===== */
 #ticketArea{ display:none; }
 
 @media print{
   /* Parámetros rápidos */
   :root{
-    --ticket-mm: 58;      /* 58 para rollo 58mm, usa 72 si es impresora 80mm */
-    --ticket-pad-mm: 1;   /* padding lateral en mm (0–2) */
+    --ticket-mm: 58;      /* usa 72 si tu impresora es 80mm */
+    --ticket-pad-mm: 1;   /* padding lateral en mm */
     --ticket-font: 14px;  /* tamaño base de letra */
     --line-height: 1.28;
   }
 
- @page { size: 58mm auto; margin: 0; }
-.ticket { width:58mm; margin:0 auto; }
+  @page{
+    size: calc(var(--ticket-mm) * 1mm) auto;
+    margin: 0;
   }
 
   html, body{
@@ -124,8 +125,8 @@
     print-color-adjust: exact;
   }
 
+  /* Oculta todo excepto el ticket */
   body *{ visibility: hidden !important; }
-
   #ticketArea, #ticketArea *{ visibility: visible !important; }
   #ticketArea{
     position: fixed; inset: 0;
@@ -137,17 +138,17 @@
 
   .ticket{
     width: calc(var(--ticket-mm) * 1mm);
-    margin: 0;
+    margin: 0 auto; /* centrado */
     padding: 0 calc(var(--ticket-pad-mm) * 1mm);
     box-sizing: border-box;
     font: var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif;
-    color: #000;
-    overflow: hidden;
-    text-align: left;
+    color:#000;
+    text-align:left;
+    overflow:hidden;
   }
 
   .ticket .t-header{ text-align:center; margin:2px 0; }
-  .ticket img{ display:inline-block; max-width:100%; height:auto; } /* ocupa todo el ancho si hace falta */
+  .ticket img{ display:inline-block; max-width:100%; height:auto; }
   .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
 
   .ticket .t-row{
@@ -158,7 +159,7 @@
     flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
     white-space:nowrap !important; text-align:left;
   }
-  .ticket .t-imp{ flex:0 0 auto; text-align:right; white-space:nowrap !important; margin-left:8px; }
+  .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap !important; }
 
   .ticket .t-totals{ text-align:right; }
   .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
