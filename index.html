@@ -439,20 +439,48 @@
       elResultados.appendChild(div);
     });
   }
-    elBuscador.addEventListener('input', ()=> pintarResultados(buscarLocal(elBuscador.value)));
-    elBuscador.addEventListener('keydown', (ev)=>{
-      if(ev.key==='Enter'){
-        const hits = buscarLocal(elBuscador.value);
-        if(hits.length===1) seleccionarProducto(hits[0]);
-      }
+// Cambiar el evento de input para no agregar producto automáticamente
+elBuscador.addEventListener('input', () => {
+  elResultados.style.display = 'block';
+  pintarResultados(buscarLocal(elBuscador.value));
+});
+
+// Evento para agregar producto solo después de la cantidad y Enter
+elCant.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && prodSeleccionado) {
+    const cantidad = parseFloat(elCant.value || '1');
+    if (cantidad > 0) {
+      addProduct(prodSeleccionado, cantidad);  // Añadir el producto con la cantidad ingresada
+      prodSeleccionado = null;
+      elCant.value = '';  // Limpiar el campo de cantidad
+      elBuscador.value = '';  // Limpiar el campo de búsqueda
+      elBuscador.focus();  // Volver al campo de búsqueda
+    } else {
+      alert('Por favor, ingrese una cantidad válida.');
+    }
+  }
+});
+
+// Función para agregar el producto al carrito
+function addProduct(prod, cantidad = 1) {
+  if (!prod) return;
+  const cant = Math.max(0.01, cantidad);
+  const precio = priceOf(prod);
+  const ex = carrito.find(x => x.id === prod.id);
+  if (ex) {
+    ex.cantidad += cant;
+    ex.importe = ex.cantidad * precio;
+  } else {
+    carrito.push({
+      ...prod,
+      cantidad: cant,
+      precioUnit: precio,
+      importe: cant * precio
     });
-    elCant.addEventListener('keydown', (ev)=>{
-      if(ev.key==='Enter' && prodSeleccionado){
-        addProduct(prodSeleccionado, parseFloat(elCant.value||'1'));
-        prodSeleccionado = null;
-        elCant.value='1'; elBuscador.value=''; elBuscador.focus();
-      }
-    });
+  }
+  render(); // Actualizar la tabla con los productos en el carrito
+}
+
     document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) elResultados.style.display='none'; });
 
     /***** Cobro + Firestore *****/
