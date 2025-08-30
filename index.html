@@ -107,6 +107,7 @@
       body *{ visibility:hidden!important; }
       #ticketArea, #ticketArea *{ visibility:visible!important; }
       #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; padding:0; margin:0; z-index:99999; }
+      #tTipoRow{ display:none !important; }
       .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; padding:0 calc(var(--ticket-pad-mm) * 1mm); box-sizing:border-box; font:var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif; color:#000; text-align:left; overflow:hidden; }
       .ticket .t-header{ text-align:center; margin:2px 0; }
       .ticket img{ display:inline-block; max-width:100%; height:auto; }
@@ -278,7 +279,7 @@
   <hr>
 
   <div class="t-core" id="tCliente"></div>
-  <div class="t-core">Tipo precio: <span id="tTipo"></span></div>
+  <div class="t-core" id="tTipoRow">Tipo precio: <span id="tTipo"></span></div>
   <hr>
 
   <div class="t-core" id="tLineas"></div>
