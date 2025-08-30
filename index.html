@@ -491,20 +491,22 @@ function pintarResultados(hits){
 }
 
     elBuscador.addEventListener('input', ()=> pintarResultados(buscarLocal(elBuscador.value)));
-    elBuscador.addEventListener('keydown', (ev)=>{
-      if(ev.key==='Enter'){
-        const hits = buscarLocal(elBuscador.value);
-        if(hits.length===1) seleccionarProducto(hits[0]);
+elBuscador.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') {
+    const hits = buscarLocal(elBuscador.value);  // Buscar producto
+    if (hits.length === 1) {
+      // Si solo hay un producto encontrado, solicitamos la cantidad
+      const cantidadInput = prompt("Ingrese la cantidad de salida:");
+      if (cantidadInput && !isNaN(cantidadInput) && cantidadInput > 0) {
+        // Validar si la cantidad es un número mayor a 0
+        addProduct(hits[0], parseFloat(cantidadInput));  // Agregar el producto con la cantidad
+        elBuscador.value = "";  // Limpiar el campo de búsqueda
+      } else {
+        alert("Por favor, ingresa una cantidad válida.");
       }
-    });
-    elCant.addEventListener('keydown', (ev)=>{
-      if(ev.key==='Enter' && prodSeleccionado){
-        addProduct(prodSeleccionado, parseFloat(elCant.value||'1'));
-        prodSeleccionado = null;
-        elCant.value='1'; elBuscador.value=''; elBuscador.focus();
-      }
-    });
-    document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) elResultados.style.display='none'; });
+    }
+  }
+});
 
     /***** Cobro + Firestore *****/
     const modalCobro = document.getElementById('modalCobro');
