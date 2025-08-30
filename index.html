@@ -416,36 +416,64 @@
     pintarResultados(buscarLocal(elBuscador.value));
   });
 
-  function pintarResultados(hits){
-    elResultados.innerHTML="";
-    if(hits.length===0){ elResultados.style.display="none"; return; }
-    elResultados.style.display="block";
-    hits.forEach(p => {
-      const div = document.createElement("div");
-      div.className = "result-item";
-      div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
-      div.onclick = () => {
-        const cantidad = parseFloat(elCant.value || '1');
-        if (cantidad <= 0) { alert('Por favor ingresa una cantidad válida'); return; }
-        addProduct(p, cantidad);
-        elResultados.style.display="none"; elBuscador.value="";
-      };
-      elResultados.appendChild(div);
-    });
-  }
+function pintarResultados(hits){
+  elResultados.innerHTML="";
+  if(hits.length===0){ elResultados.style.display="none"; return; }
+  elResultados.style.display="block";
 
-  elBuscador.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      const hits = buscarLocal(elBuscador.value);
-      if (hits.length === 1) {
-        const cantidadInput = prompt("Ingrese la cantidad de salida:");
-        if (cantidadInput && !isNaN(cantidadInput) && cantidadInput > 0) {
-          addProduct(hits[0], parseFloat(cantidadInput));
-          elBuscador.value = "";
-        } else { alert("Por favor, ingresa una cantidad válida."); }
-      }
-    }
+  hits.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "result-item";
+    div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
+
+    // NUEVO: solo seleccionar y enfocar cantidad
+    div.onclick = () => {
+      prodSeleccionado = p;                 // guardar selección
+      elBuscador.value = p.nombre;          // opcional: mostrar nombre
+      elResultados.style.display = "none";
+      elCant.focus();
+      elCant.select();
+    };
+
+    elResultados.appendChild(div);
   });
+}
+
+elBuscador.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') {
+    const hits = buscarLocal(elBuscador.value.trim());
+    if (hits.length >= 1) {
+      prodSeleccionado = hits[0];          // toma el primer resultado
+      elResultados.style.display = "none";
+      elBuscador.value = hits[0].nombre;   // opcional
+      elCant.focus();
+      elCant.select();
+    }
+  }
+});
+elCant.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter') {
+    if (!prodSeleccionado) {
+      alert('Primero selecciona un producto.');
+      elBuscador.focus();
+      return;
+    }
+    const cant = parseFloat(elCant.value || '');
+    if (isNaN(cant) || cant <= 0) {
+      alert('Ingresa una cantidad válida.');
+      elCant.focus();
+      elCant.select();
+      return;
+    }
+
+    addProduct(prodSeleccionado, cant);  // ahora sí, agrega
+    // reset para capturar el siguiente
+    prodSeleccionado = null;
+    elBuscador.value = '';
+    elCant.value = '1';
+    elBuscador.focus();
+  }
+});
 
   /***** Cobro + Firestore *****/
   const modalCobro = document.getElementById('modalCobro');
