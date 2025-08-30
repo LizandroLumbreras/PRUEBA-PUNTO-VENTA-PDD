@@ -297,81 +297,19 @@
   </div>
 
 <script type="module">
-// Función para realizar la búsqueda de productos
-function buscarLocal(qraw) {
+  // Función para realizar la búsqueda de productos
+function buscarLocal(qraw){
   const q = (qraw || "").trim();
   if (!q) return [];
 
-  const idByCode = codeIndex.get(q); // Buscamos el código de barras
+  const idByCode = codeIndex.get(q);
   if (idByCode) {
     const p = catalogo.find(x => x.id === idByCode);
     if (p) return [p];
   }
 
-  const nq = normaliza(q); // Normalizamos la búsqueda para que no sea sensible a mayúsculas/minúsculas
-  return catalogo.filter(p => normaliza(p.nombre).includes(nq)); // Filtra los productos por nombre
-}
-
-// Cuando el usuario hace clic en un resultado de búsqueda
-function pintarResultados(hits) {
-  elResultados.innerHTML = ""; 
-  if (hits.length === 0) {
-    elResultados.style.display = "none"; 
-    return;
-  }
-
-  elResultados.style.display = "block";
-  
-  hits.forEach(p => {
-    const div = document.createElement("div");
-    div.className = "result-item";
-    div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
-    
-    // Al hacer clic en un resultado, agregamos el producto con la cantidad ingresada
-    div.onclick = () => {
-      const cantidad = parseFloat(elCant.value || '1'); // Captura la cantidad ingresada por el usuario
-      if (cantidad <= 0) {
-        alert('Por favor ingresa una cantidad válida');
-        return;
-      }
-      addProduct(p, cantidad); // Llamamos a la función de agregar el producto al carrito
-      elResultados.style.display = "none"; 
-      elBuscador.value = ""; // Limpiamos el campo de búsqueda
-    };
-    
-    elResultados.appendChild(div);
-  });
-}
-
-// Función para agregar un producto al carrito
-function addProduct(prod, cantidad = 1) {
-  if (!prod) return; // Verifica que el producto exista
-
-  // Aseguramos que la cantidad sea mayor que 0
-  const cant = Math.max(0.01, Number(cantidad) || 1);
-
-  // Obtén el precio del producto
-  const precio = priceOf(prod);
-
-  // Verificamos si el producto ya está en el carrito
-  const ex = carrito.find(x => x.id === prod.id);
-
-  // Si el producto ya está, aumentamos la cantidad
-  if (ex) {
-    ex.cantidad += cant;
-    ex.importe = ex.cantidad * precio;
-  } else {
-    // Si el producto no está, lo agregamos con la cantidad especificada
-    carrito.push({
-      ...prod,
-      cantidad: cant,
-      precioUnit: precio,
-      importe: cant * precio
-    });
-  }
-
-  // Renderizamos la tabla con los productos del carrito
-  render();
+  const nq = normaliza(q);
+  return catalogo.filter(p => normaliza(p.nombre).includes(nq));
 }
 
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
