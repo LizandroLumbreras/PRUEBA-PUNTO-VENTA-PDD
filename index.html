@@ -116,7 +116,6 @@
       .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap!important; }
       .ticket .t-totals{ text-align:right; }
       .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
-      .ticket .t-totals .value{ min-width:58px; text-align:right; }
       .ticket .t-thanks{ text-align:center; margin-top:8px; }
     }
   </style>
@@ -169,6 +168,7 @@
     <section class="actions">
       <button class="btn" id="btnCobrar">Cobrar</button>
       <button class="btn" id="btnCorte">Corte del día</button>
+      <!-- NUEVO: botón para abrir pendientes -->
       <button class="btn" id="btnPendientes" style="background:linear-gradient(180deg,#8a5cff,#5b33cf); margin-top:10px;">Cortes pendientes</button>
     </section>
   </main>
@@ -211,35 +211,34 @@
       </div>
     </div>
   </div>
-  
-  <!-- Modal Cortes Pendientes -->
-<div id="modalPendientes" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center;">
-  <div class="modal-card" style="width:min(720px,94vw);">
-    <div class="modal-h" style="display:flex; justify-content:space-between; align-items:center;">
-      <span>Cortes pendientes (últimos 30 días)</span>
-      <button id="btnCerrarPendientes" class="btn" style="background:#777; width:auto; padding:8px 12px; font-size:14px;">Cerrar</button>
-    </div>
-    <div class="modal-b" style="gap:12px;">
-      <div class="card" style="padding:10px; background:#fff;">
-        <div style="overflow:auto; max-height:420px;">
-          <table style="width:100%; border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="text-align:left; padding:8px; background:#f1f3f6;">Fecha</th>
-                <th style="text-align:right; padding:8px; background:#f1f3f6;">Tickets</th>
-                <th style="text-align:right; padding:8px; background:#f1f3f6;">Total</th>
-                <th style="text-align:center; padding:8px; background:#f1f3f6;">Acción</th>
-              </tr>
-            </thead>
-            <tbody id="tbodyPendientes"></tbody>
-          </table>
+
+  <!-- NUEVO: Modal Cortes Pendientes -->
+  <div id="modalPendientes" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center;">
+    <div class="modal-card" style="width:min(720px,94vw);">
+      <div class="modal-h" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Cortes pendientes (últimos 30 días)</span>
+        <button id="btnCerrarPendientes" class="btn" style="background:#777; width:auto; padding:8px 12px; font-size:14px;">Cerrar</button>
+      </div>
+      <div class="modal-b" style="gap:12px;">
+        <div class="card" style="padding:10px; background:#fff;">
+          <div style="overflow:auto; max-height:420px;">
+            <table style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:8px; background:#f1f3f6;">Fecha</th>
+                  <th style="text-align:right; padding:8px; background:#f1f3f6;">Tickets</th>
+                  <th style="text-align:right; padding:8px; background:#f1f3f6;">Total</th>
+                  <th style="text-align:center; padding:8px; background:#f1f3f6;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyPendientes"></tbody>
+            </table>
+          </div>
+          <div id="hintPendientes" style="color:#666; font-size:14px; padding:8px 4px; display:none;">No hay cortes pendientes 🎉</div>
         </div>
-        <div id="hintPendientes" style="color:#666; font-size:14px; padding:8px 4px; display:none;">No hay cortes pendientes 🎉</div>
       </div>
     </div>
   </div>
-</div>
-
 
   <!-- Ticket imprimible -->
   <div id="ticketArea">
@@ -278,29 +277,17 @@
   </div>
 
 <script type="module">
-  // ====== Helpers de fecha ======
-const pad2 = n => String(n).padStart(2, '0');
-const toYYYYMMDD = (date) => {
-  const d = new Date(date);
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-};
-
-// Rango últimos 30 días
-function rangoUltimosDias(dias = 30){
-  const end = new Date(); end.setHours(23,59,59,999);
-  const start = new Date(); start.setDate(start.getDate() - (dias-1)); start.setHours(0,0,0,0);
-  return { start, end };
-}
-
   // ===== Helpers y constantes =====
-  const CFDI_DESC = {
-    G01:'Adquisición de mercancías',
-    G02:'Devoluciones, descuentos y bonificaciones',
-    G03:'Gastos en General',
-    I01:'Construcciones',
-    S01:'Sin efectos fiscales'
-  };
+  const CFDI_DESC = { G01:'Adquisición de mercancías', G02:'Devoluciones, descuentos y bonificaciones', G03:'Gastos en General', I01:'Construcciones', S01:'Sin efectos fiscales' };
   const cfdiDesc = code => CFDI_DESC[code] || code;
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const toYYYYMMDD = (date) => { const d = new Date(date); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+  function rangoUltimosDias(dias = 30){
+    const end = new Date(); end.setHours(23,59,59,999);
+    const start = new Date(); start.setDate(start.getDate() - (dias-1)); start.setHours(0,0,0,0);
+    return { start, end };
+  }
 
   // Función para realizar la búsqueda de productos
   function buscarLocal(qraw){
@@ -317,7 +304,7 @@ function rangoUltimosDias(dias = 30){
 
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-    getFirestore, collection, addDoc, serverTimestamp, runTransaction, doc,
+    getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
     getDocs, query, where, orderBy, Timestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -358,8 +345,7 @@ function rangoUltimosDias(dias = 30){
       const x = d.data();
       if (x.activo === false) return;
       const prod = {
-        id: d.id,
-        nombre: x.concepto || 'SIN NOMBRE',
+        id: d.id, nombre: x.concepto || 'SIN NOMBRE',
         codigo: (x.codigoBarra||'').toString(),
         precioPublico: Number(x.precioPublico || 0),
         ivaTasa: Number(x.ivaTasa || 0),
@@ -378,14 +364,9 @@ function rangoUltimosDias(dias = 30){
     snap.forEach(d=>{
       const c=d.data(); if(c.activo===false) return;
       const cli={
-        id:d.id,
-        nombre:c.nombre||"",
-        alias:c.alias||"",
-        telefono:c.telefono||"",
-        ciudad:c.ciudad||"",
-        rfc:c.rfc||"",
-        ocupa_factura:!!c.ocupa_factura,
-        uso_cfdi: c.uso_cfdi || ""
+        id:d.id, nombre:c.nombre||"", alias:c.alias||"",
+        telefono:c.telefono||"", ciudad:c.ciudad||"", rfc:c.rfc||"",
+        ocupa_factura:!!c.ocupa_factura, uso_cfdi: c.uso_cfdi || ""
       };
       clientes.push(cli);
       const opt=document.createElement("option");
@@ -394,7 +375,6 @@ function rangoUltimosDias(dias = 30){
       dl.appendChild(opt);
     });
   }
-
   elCliente.addEventListener("change",()=>{
     const v=normaliza(elCliente.value);
     clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;
@@ -424,7 +404,7 @@ function rangoUltimosDias(dias = 30){
         <td>${it.nombre}</td>
         <td>${it.cantidad.toFixed(2)}</td>
         <td>${money(it.importe)}</td>
-        <td class="del-col"><button class="del">✕</button></td>`;
+        <td class="del-col"><button class="del" title="Quitar">✕</button></td>`;
       tr.querySelector('.del').onclick=()=>delItem(it.id);
       elTbody.appendChild(tr);
     });
@@ -434,7 +414,7 @@ function rangoUltimosDias(dias = 30){
     lblTotal.textContent=money(total);
   }
 
-  // eliminar línea del carrito (utilidad)
+  // eliminar línea del carrito
   function delItem(id){
     carrito = carrito.filter(x=>x.id!==id);
     render();
@@ -446,78 +426,56 @@ function rangoUltimosDias(dias = 30){
     const cant = Math.max(0.01, Number(cantidad) || 1);
     const precio = priceOf(prod);
     const ex = carrito.find(x => x.id === prod.id);
-    if(ex) {
-      ex.cantidad += cant;
-      ex.importe = ex.cantidad * precio;
-    } else {
-      carrito.push({...prod, cantidad:cant, precioUnit:precio, importe:cant*precio});
-    }
+    if(ex) { ex.cantidad += cant; ex.importe = ex.cantidad * precio; }
+    else { carrito.push({...prod, cantidad:cant, precioUnit:precio, importe:cant*precio}); }
     render();
   }
 
   // Resultados de búsqueda
-  elBuscador.addEventListener('input', () => {
-    pintarResultados(buscarLocal(elBuscador.value));
-  });
-
-function pintarResultados(hits){
-  elResultados.innerHTML="";
-  if(hits.length===0){ elResultados.style.display="none"; return; }
-  elResultados.style.display="block";
-
-  hits.forEach(p => {
-    const div = document.createElement("div");
-    div.className = "result-item";
-    div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
-
-    // NUEVO: solo seleccionar y enfocar cantidad
-    div.onclick = () => {
-      prodSeleccionado = p;                 // guardar selección
-      elBuscador.value = p.nombre;          // opcional: mostrar nombre
-      elResultados.style.display = "none";
-      elCant.focus();
-      elCant.select();
-    };
-
-    elResultados.appendChild(div);
-  });
-}
-
-elBuscador.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter') {
-    const hits = buscarLocal(elBuscador.value.trim());
-    if (hits.length >= 1) {
-      prodSeleccionado = hits[0];          // toma el primer resultado
-      elResultados.style.display = "none";
-      elBuscador.value = hits[0].nombre;   // opcional
-      elCant.focus();
-      elCant.select();
-    }
+  elBuscador.addEventListener('input', () => { pintarResultados(buscarLocal(elBuscador.value)); });
+  function pintarResultados(hits){
+    elResultados.innerHTML="";
+    if(hits.length===0){ elResultados.style.display="none"; return; }
+    elResultados.style.display="block";
+    hits.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
+      // Seleccionar y pasar a cantidad
+      div.onclick = () => {
+        prodSeleccionado = p;
+        elBuscador.value = p.nombre;
+        elResultados.style.display = "none";
+        elCant.focus(); elCant.select();
+      };
+      elResultados.appendChild(div);
+    });
   }
-});
-elCant.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter') {
-    if (!prodSeleccionado) {
-      alert('Primero selecciona un producto.');
+  elBuscador.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      const hits = buscarLocal(elBuscador.value.trim());
+      if (hits.length >= 1) {
+        prodSeleccionado = hits[0];
+        elResultados.style.display = "none";
+        elBuscador.value = hits[0].nombre;
+        elCant.focus(); elCant.select();
+      }
+    }
+  });
+  elCant.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      if (!clienteSeleccionado){ alert('Selecciona un cliente primero.'); elCliente.focus(); return; }
+      if (!prodSeleccionado)   { alert('Primero selecciona un producto.'); elBuscador.focus(); return; }
+      const cant = parseFloat(elCant.value || '');
+      if (isNaN(cant) || cant <= 0) { alert('Ingresa una cantidad válida.'); elCant.focus(); elCant.select(); return; }
+      addProduct(prodSeleccionado, cant);
+      // reset
+      prodSeleccionado = null;
+      elBuscador.value = '';
+      elCant.value = '1';
       elBuscador.focus();
-      return;
     }
-    const cant = parseFloat(elCant.value || '');
-    if (isNaN(cant) || cant <= 0) {
-      alert('Ingresa una cantidad válida.');
-      elCant.focus();
-      elCant.select();
-      return;
-    }
-
-    addProduct(prodSeleccionado, cant);  // ahora sí, agrega
-    // reset para capturar el siguiente
-    prodSeleccionado = null;
-    elBuscador.value = '';
-    elCant.value = '1';
-    elBuscador.focus();
-  }
-});
+  });
 
   /***** Cobro + Firestore *****/
   const modalCobro = document.getElementById('modalCobro');
@@ -539,18 +497,15 @@ elCant.addEventListener('keydown', (ev) => {
     modalCobro.style.display='flex';
     setTimeout(()=>montoRecibido.focus(), 50);
   }
-
   function cerrarCobro(){ modalCobro.style.display='none'; document.body.classList.remove('modal-open'); }
-
   metodoPago.addEventListener('change', ()=>{
     const isCash = metodoPago.value==='efectivo' || metodoPago.value==='mixto';
     bloqueEfectivo.style.display = isCash ? 'block' : 'none';
   });
-
   montoRecibido.addEventListener('input', ()=>{
     const { total } = calcularTotalesConImpuestosIncluidos();
-    const recibido = parseFloat(montoRecibido.value||'0');
-    const cambio = Math.max(0, recibido - total);
+    const recibidoX = parseFloat(montoRecibido.value||'0');
+    const cambio = Math.max(0, recibidoX - total);
     montoCambio.textContent = money(cambio);
   });
 
@@ -565,7 +520,6 @@ elCant.addEventListener('keydown', (ev) => {
     });
     return `RV-${String(folio).padStart(6,'0')}`;
   }
-
   async function guardarVentaEnFirestore(payload){
     const col = collection(db, 'rutas_venta', rutaId, 'ventas');
     const docRef = await addDoc(col, payload);
@@ -623,7 +577,6 @@ elCant.addEventListener('keydown', (ev) => {
       if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.rfc){
         notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);
       }
-      // --- NUEVO: Uso de CFDI desde el cliente ---
       if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.uso_cfdi){
         notasExtra.push(`Uso CFDI: ${cfdiDesc(clienteSeleccionado.uso_cfdi)} (${clienteSeleccionado.uso_cfdi})`);
       }
@@ -638,21 +591,21 @@ elCant.addEventListener('keydown', (ev) => {
       const clienteTxt = elCliente.value || 'Mostrador';
       const metodo = metodoPago.value;
 
+      const recibido = parseFloat(montoRecibido.value||'0');
       if(metodo==='efectivo' || metodo==='mixto'){
-        const recibido = parseFloat(montoRecibido.value||'0');
         if(recibido < total){ alert('El pago recibido es menor que el total.'); return; }
       }
-
-      const recibido = parseFloat(montoRecibido.value||'0');
       const cambio = Math.max(0, recibido - total);
       const notas = (notasCobro.value||'').trim();
 
       const folio = await getNextFolio(db);
-      const fecha = new Date(); const fechaTxt = fecha.toLocaleString();
+      const fecha = new Date(); 
+      const fechaTxt = fecha.toLocaleString();
+      const fecha_dia = toYYYYMMDD(fecha); // NUEVO
 
       const venta = {
         folio, rutaId,
-        fecha: serverTimestamp(), fecha_txt: fechaTxt,
+        fecha: serverTimestamp(), fecha_txt: fechaTxt, fecha_dia, // NUEVO
         cliente: clienteTxt,
         cliente_info: clienteSeleccionado ? {
           id: clienteSeleccionado.id,
@@ -663,7 +616,7 @@ elCant.addEventListener('keydown', (ev) => {
           estado: clienteSeleccionado.estado || '',
           cp: clienteSeleccionado.cp || '',
           direccion: clienteSeleccionado.direccion || '',
-          uso_cfdi: clienteSeleccionado.uso_cfdi || ''  // NUEVO: se guarda
+          uso_cfdi: clienteSeleccionado.uso_cfdi || ''  // guardado
         } : null,
         atendio: ATENDIO,
         tipo_precio: "publico",
@@ -697,41 +650,48 @@ elCant.addEventListener('keydown', (ev) => {
     }
   }
 
-  /***** Corte del día *****/
-  async function corteDelDia(){
+  /***** Cortes por día *****/
+  async function calcularResumenDeDia(dateStr){
+    const [Y,M,D] = dateStr.split('-').map(Number);
+    const start = new Date(Y, M-1, D, 0,0,0,0);
+    const end   = new Date(Y, M-1, D, 23,59,59,999);
+    const tsStart = Timestamp.fromDate(start);
+    const tsEnd   = Timestamp.fromDate(end);
+
+    const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
+    const qv = query(ventasRef, where('fecha','>=', tsStart), where('fecha','<', tsEnd), orderBy('fecha','asc'));
+    const snap = await getDocs(qv);
+
+    let total = 0, conteo = 0;
+    const desg = { efectivo:0, tarjeta:0, transferencia:0, mixto:0 };
+    snap.forEach(s=>{
+      const v = s.data(); const t = Number(v.total||0);
+      total += t; conteo += 1;
+      const m = (v.metodo_pago||'').toLowerCase();
+      if(m==='efectivo') desg.efectivo += t;
+      else if(m==='tarjeta') desg.tarjeta += t;
+      else if(m==='transferencia') desg.transferencia += t;
+      else if(m==='mixto') desg.mixto += t;
+    });
+    return { total, conteo, desg };
+  }
+
+  async function generarCorteParaDia(dateStr){
     try{
-      const start = new Date(); start.setHours(0,0,0,0);
-      const end   = new Date(); end.setHours(23,59,59,999);
-      const tsStart = Timestamp.fromDate(start);
-      const tsEnd   = Timestamp.fromDate(end);
+      const { total, conteo, desg } = await calcularResumenDeDia(dateStr);
+      if(conteo === 0){ alert(`No hay ventas en ${dateStr}.`); return; }
 
-      const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
-      const q = query(ventasRef, where('fecha','>=', tsStart), where('fecha','<', tsEnd), orderBy('fecha','asc'));
-      const snap = await getDocs(q);
-      if(snap.empty){ alert('No hay ventas registradas hoy.'); return; }
-
-      let total = 0, conteo = 0;
-      const desg = { efectivo:0, tarjeta:0, transferencia:0, mixto:0 };
-      snap.forEach(s=>{
-        const v = s.data(); const t = Number(v.total||0);
-        total += t; conteo += 1;
-        const m = (v.metodo_pago||'').toLowerCase();
-        if(m==='efectivo') desg.efectivo += t;
-        else if(m==='tarjeta') desg.tarjeta += t;
-        else if(m==='transferencia') desg.transferencia += t;
-        else if(m==='mixto') desg.mixto += t;
-      });
-
-      const folioCorte = 'C-' + new Date().toISOString().replaceAll(/[-:T.Z]/g,'').slice(0,14);
+      const folioCorte = `C-${dateStr.replaceAll('-','')}`;
       const fechaTxt = new Date().toLocaleString();
 
       document.getElementById('tFolio').textContent = `CORTE: ${folioCorte}`;
       document.getElementById('tFecha').textContent = fechaTxt;
       document.getElementById('tAtendio').textContent = ATENDIO;
       document.getElementById('tCliente').textContent = `Ruta: ${rutaId}`;
-      document.getElementById('tTipo').textContent = 'Corte del día';
+      document.getElementById('tTipo').textContent = `Corte del día ${dateStr}`;
 
-      const tLineas = document.getElementById('tLineas'); tLineas.innerHTML='';
+      const tLineas = document.getElementById('tLineas'); 
+      tLineas.innerHTML='';
       const mk = (l,r)=>{ const d=document.createElement('div'); d.className='t-row';
         const a=document.createElement('span'); a.className='t-desc'; a.textContent=l;
         const b=document.createElement('span'); b.className='t-imp'; b.textContent=money(r);
@@ -749,16 +709,98 @@ elCant.addEventListener('keydown', (ev) => {
       document.getElementById('tNotas').textContent = 'Fin de día';
 
       window.print();
+
+      const corteRef = doc(db, 'rutas_venta', rutaId, 'cortes', dateStr);
+      await setDoc(corteRef, { fecha_dia: dateStr, total, tickets: conteo, desglose: desg, atendio: ATENDIO, creado: serverTimestamp() });
+
+      if (document.getElementById('modalPendientes').style.display === 'flex'){ await listarCortesPendientes(); }
+      alert(`Corte de ${dateStr} registrado.`);
     }catch(err){
       console.error(err);
-      alert('No se pudo generar el corte. Revisa la conexión.');
+      alert('No se pudo generar/guardar el corte.');
     }
   }
-    // Botones
-    document.getElementById('btnCobrar').onclick = abrirCobro;
-    document.getElementById('btnCancelarCobro').onclick = cerrarCobro;
-    document.getElementById('btnConfirmarCobro').onclick = confirmarCobro;
-    document.getElementById('btnCorte').onclick = corteDelDia;
+
+  async function corteDelDia(){
+    const hoy = toYYYYMMDD(new Date());
+    await generarCorteParaDia(hoy);
+  }
+
+  async function listarCortesPendientes(){
+    const { start, end } = rangoUltimosDias(30);
+    const tsStart = Timestamp.fromDate(start);
+    const tsEnd   = Timestamp.fromDate(end);
+
+    const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
+    const qv = query(ventasRef, where('fecha','>=', tsStart), where('fecha','<', tsEnd));
+    const snapV = await getDocs(qv);
+
+    const porDia = new Map();
+    snapV.forEach(s=>{
+      const v = s.data();
+      const d = v.fecha_dia || toYYYYMMDD((v.fecha && v.fecha.toDate) ? v.fecha.toDate() : new Date(v.fecha_txt || Date.now()));
+      const t = Number(v.total||0);
+      const cur = porDia.get(d) || { total:0, tickets:0 };
+      cur.total += t; cur.tickets += 1;
+      porDia.set(d, cur);
+    });
+
+    const cortesRef = collection(db, 'rutas_venta', rutaId, 'cortes');
+    const qc = query(cortesRef, where('fecha_dia','>=', toYYYYMMDD(start)), where('fecha_dia','<=', toYYYYMMDD(end)));
+    const snapC = await getDocs(qc);
+    const cerrados = new Set();
+    snapC.forEach(c=>{ const x=c.data(); if(x && x.fecha_dia) cerrados.add(x.fecha_dia); });
+
+    const pendientes = Array.from(porDia.entries())
+      .filter(([d]) => !cerrados.has(d))
+      .sort((a,b)=> a[0] < b[0] ? 1 : -1);
+
+    const tbody = document.getElementById('tbodyPendientes');
+    const hint  = document.getElementById('hintPendientes');
+    tbody.innerHTML = '';
+
+    if(pendientes.length === 0){ hint.style.display = 'block'; return; }
+    hint.style.display = 'none';
+
+    pendientes.forEach(([fecha_dia, data])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="padding:8px;">${fecha_dia}</td>
+        <td style="padding:8px; text-align:right;">${data.tickets}</td>
+        <td style="padding:8px; text-align:right;">${money(data.total)}</td>
+        <td style="padding:8px; text-align:center;">
+          <button class="btn btn-gen" data-dia="${fecha_dia}" style="width:auto; padding:8px 12px; font-size:14px;">Generar corte</button>
+        </td>`;
+      tbody.appendChild(tr);
+    });
+
+    tbody.querySelectorAll('.btn-gen').forEach(btn=>{
+      btn.addEventListener('click', async (ev)=>{
+        const dia = ev.currentTarget.getAttribute('data-dia');
+        await generarCorteParaDia(dia);
+      });
+    });
+  }
+
+  function abrirModalPendientes(){
+    const modal = document.getElementById('modalPendientes');
+    document.body.classList.add('modal-open');
+    modal.style.display = 'flex';
+    listarCortesPendientes();
+  }
+  function cerrarModalPendientes(){
+    const modal = document.getElementById('modalPendientes');
+    modal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+
+  // Botones
+  document.getElementById('btnCobrar').onclick = abrirCobro;
+  document.getElementById('btnCancelarCobro').onclick = cerrarCobro;
+  document.getElementById('btnConfirmarCobro').onclick = confirmarCobro;
+  document.getElementById('btnCorte').onclick = corteDelDia;
+  document.getElementById('btnPendientes').onclick = abrirModalPendientes;
+  document.getElementById('btnCerrarPendientes').onclick = cerrarModalPendientes;
 
   await cargarCatalogoDesdeFirestore();
   await cargarClientes();
@@ -766,3 +808,4 @@ elCant.addEventListener('keydown', (ev) => {
 </script>
 </body>
 </html>
+
