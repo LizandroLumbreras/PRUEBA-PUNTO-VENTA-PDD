@@ -117,6 +117,20 @@
       .ticket .t-totals{ text-align:right; }
       .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
       .ticket .t-thanks{ text-align:center; margin-top:8px; }
+      /* === Ajustes de impresión solicitados === */
+/* Encabezado principal +2 */
+.ticket .t-strong{ font-size: calc(var(--ticket-font) + 2px); }
+
+/* Logo +2px (≈2pt) */
+.ticket .t-header img{ max-width: 142px !important; }
+
+/* Información del negocio -3 */
+.ticket .t-header.biz{ font-size: calc(var(--ticket-font) - 3px); }
+
+/* Info del ticket (folio, fecha, atendió, cliente, tipo, líneas, totales, método y pago/cambio) -3 */
+.ticket .t-core,
+.ticket .t-core *{ font-size: calc(var(--ticket-font) - 3px); }
+
     }
   </style>
 </head>
@@ -242,38 +256,50 @@
 
   <!-- Ticket imprimible -->
   <div id="ticketArea">
-    <div id="ticket" class="ticket">
-      <div class="t-header"><img src="logo_proveedora.webp" alt="Logo" style="max-width:140px;"></div>
-      <div class="t-header t-strong">La Proveedora</div>
-      <div class="t-header">Ruta de Venta</div>
-      <hr>
-      <div class="t-header">MADERO 690 SUR, CENTRO</div>
-      <div class="t-header">LINARES, NUEVO LEÓN, 67700</div>
-      <div class="t-header">RFC: PDD-031204-KL5</div>
-      <div class="t-header">TEL: (821) 2121805</div>
-      <div class="t-header">RÉGIMEN GENERAL DE LEY</div>
-      <div class="t-header">PERSONAS MORALES</div>
-      <hr>
-      <div class="t-header" id="tFolio"></div>
-      <div class="t-header" id="tFecha"></div>
-      <div class="t-header">Atendió: <span id="tAtendio"></span></div>
-      <hr>
-      <div id="tCliente"></div>
-      <div>Tipo precio: <span id="tTipo"></span></div>
-      <hr>
-      <div id="tLineas"></div>
-      <hr>
-      <div class="t-totals">
-        <div class="row"><span>Subtotal</span><span id="tSubtotal"></span></div>
-        <div class="row"><span>Impuestos</span><span id="tImpuestos"></span></div>
-        <div class="row" style="font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
-      </div>
-      <hr>
-      <div>Método: <span id="tMetodo"></span></div>
-      <div id="tRecibidoRow">Pago: <span id="tRecibido"></span> · Cambio: <span id="tCambio"></span></div>
-      <div id="tNotas"></div>
-      <div class="t-thanks">¡Gracias por su compra!</div>
-    </div>
+<div id="ticket" class="ticket">
+  <div class="t-header"><img src="logo_proveedora.webp" alt="Logo" style="max-width:140px;"></div>
+  <div class="t-header t-strong">La Proveedora</div>
+  <div class="t-header t-strong">Ruta de Venta</div>
+  <hr>
+
+  <!-- INFO NEGOCIO: ahora con clase 'biz' -->
+  <div class="t-header biz">MADERO 690 SUR, CENTRO</div>
+  <div class="t-header biz">LINARES, NUEVO LEÓN, 67700</div>
+  <div class="t-header biz">RFC: PDD-031204-KL5</div>
+  <div class="t-header biz">TEL: (821) 2121805</div>
+  <div class="t-header biz">RÉGIMEN GENERAL DE LEY</div>
+  <div class="t-header biz">PERSONAS MORALES</div>
+  <hr>
+
+  <!-- INFO TICKET: -3 con clase 't-core' -->
+  <div class="t-header t-core" id="tFolio"></div>
+  <div class="t-header t-core" id="tFecha"></div>
+  <div class="t-header t-core">Atendió: <span id="tAtendio"></span></div>
+  <hr>
+
+  <div class="t-core" id="tCliente"></div>
+  <div class="t-core">Tipo precio: <span id="tTipo"></span></div>
+  <hr>
+
+  <div class="t-core" id="tLineas"></div>
+  <hr>
+
+  <div class="t-totals t-core">
+    <div class="row"><span>Subtotal</span><span id="tSubtotal"></span></div>
+    <div class="row"><span>Impuestos</span><span id="tImpuestos"></span></div>
+    <div class="row" style="font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
+  </div>
+  <hr>
+
+  <div class="t-core">Método: <span id="tMetodo"></span></div>
+  <div class="t-core" id="tRecibidoRow">Pago: <span id="tRecibido"></span> · Cambio: <span id="tCambio"></span></div>
+
+  <!-- NOTAS: queda con el tamaño base (sin -3) -->
+  <div id="tNotas"></div>
+
+  <div class="t-header t-strong t-core" style="font-weight:600;">&nbsp;</div>
+  <div class="t-thanks">¡Gracias por su compra!</div>
+</div>
   </div>
 
 <script type="module">
