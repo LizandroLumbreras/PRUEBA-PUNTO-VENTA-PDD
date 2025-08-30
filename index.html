@@ -98,75 +98,27 @@
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
     body.modal-open{ overflow:hidden; }
 
-/* ===== IMPRESIÓN DEL TICKET (versión correcta) ===== */
-#ticketArea{ display:none; }
-
-@media print{
-  /* Parámetros rápidos */
-  :root{
-    --ticket-mm: 72;      /* usa 72 si tu impresora es 80mm */
-    --ticket-pad-mm: 1;   /* padding lateral en mm */
-    --ticket-font: 18px;  /* tamaño base de letra */
-    --line-height: 1.08;
-  }
-
-  @page{
-    size: calc(var(--ticket-mm) * 1mm) auto;
-    margin: 0;
-  }
-
-  html, body{
-    background:#fff !important;
-    height:auto !important;
-    width: calc(var(--ticket-mm) * 1mm);
-    margin: 0 !important;
-    padding: 0 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  /* Oculta todo excepto el ticket */
-  body *{ visibility: hidden !important; }
-  #ticketArea, #ticketArea *{ visibility: visible !important; }
-  #ticketArea{
-    position: fixed; inset: 0;
-    display: block !important;
-    background: #fff !important;
-    padding: 0; margin: 0;
-    z-index: 99999;
-  }
-
-  .ticket{
-    width: calc(var(--ticket-mm) * 1mm);
-    margin: 0 auto; /* centrado */
-    padding: 0 calc(var(--ticket-pad-mm) * 1mm);
-    box-sizing: border-box;
-    font: var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif;
-    color:#000;
-    text-align:left;
-    overflow:hidden;
-  }
-
-  .ticket .t-header{ text-align:center; margin:2px 0; }
-  .ticket img{ display:inline-block; max-width:100%; height:auto; }
-  .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
-
-  .ticket .t-row{
-    display:flex !important; justify-content:space-between;
-    align-items:center; gap:6px; white-space:nowrap !important; margin:2px 0;
-  }
-  .ticket .t-desc{
-    flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap !important; text-align:left;
-  }
-  .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap !important; }
-
-  .ticket .t-totals{ text-align:right; }
-  .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
-  .ticket .t-totals .value{ min-width:58px; text-align:right; }
-
-  .ticket .t-thanks{ text-align:center; margin-top:8px; }
-}
+    /* ===== IMPRESIÓN DEL TICKET ===== */
+    #ticketArea{ display:none; }
+    @media print{
+      :root{ --ticket-mm:72; --ticket-pad-mm:1; --ticket-font:18px; --line-height:1.08; }
+      @page{ size: calc(var(--ticket-mm) * 1mm) auto; margin:0; }
+      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      body *{ visibility:hidden!important; }
+      #ticketArea, #ticketArea *{ visibility:visible!important; }
+      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; padding:0; margin:0; z-index:99999; }
+      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; padding:0 calc(var(--ticket-pad-mm) * 1mm); box-sizing:border-box; font:var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif; color:#000; text-align:left; overflow:hidden; }
+      .ticket .t-header{ text-align:center; margin:2px 0; }
+      .ticket img{ display:inline-block; max-width:100%; height:auto; }
+      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
+      .ticket .t-row{ display:flex!important; justify-content:space-between; align-items:center; gap:6px; white-space:nowrap!important; margin:2px 0; }
+      .ticket .t-desc{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap!important; text-align:left; }
+      .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap!important; }
+      .ticket .t-totals{ text-align:right; }
+      .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
+      .ticket .t-totals .value{ min-width:58px; text-align:right; }
+      .ticket .t-thanks{ text-align:center; margin-top:8px; }
+    }
   </style>
 </head>
 <body>
@@ -261,7 +213,6 @@
 
   <!-- Ticket imprimible -->
   <div id="ticketArea">
-
     <div id="ticket" class="ticket">
       <div class="t-header"><img src="logo_proveedora.webp" alt="Logo" style="max-width:140px;"></div>
       <div class="t-header t-strong">La Proveedora</div>
@@ -297,25 +248,33 @@
   </div>
 
 <script type="module">
-  // Función para realizar la búsqueda de productos
-function buscarLocal(qraw){
-  const q = (qraw || "").trim();
-  if (!q) return [];
+  // ===== Helpers y constantes =====
+  const CFDI_DESC = {
+    G01:'Adquisición de mercancías',
+    G02:'Devoluciones, descuentos y bonificaciones',
+    G03:'Gastos en General',
+    I01:'Construcciones',
+    S01:'Sin efectos fiscales'
+  };
+  const cfdiDesc = code => CFDI_DESC[code] || code;
 
-  const idByCode = codeIndex.get(q);
-  if (idByCode) {
-    const p = catalogo.find(x => x.id === idByCode);
-    if (p) return [p];
+  // Función para realizar la búsqueda de productos
+  function buscarLocal(qraw){
+    const q = (qraw || "").trim();
+    if (!q) return [];
+    const idByCode = codeIndex.get(q);
+    if (idByCode) {
+      const p = catalogo.find(x => x.id === idByCode);
+      if (p) return [p];
+    }
+    const nq = normaliza(q);
+    return catalogo.filter(p => normaliza(p.nombre).includes(nq));
   }
 
-  const nq = normaliza(q);
-  return catalogo.filter(p => normaliza(p.nombre).includes(nq));
-}
-
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { 
+  import {
     getFirestore, collection, addDoc, serverTimestamp, runTransaction, doc,
-    getDocs, query, where, orderBy, Timestamp 
+    getDocs, query, where, orderBy, Timestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -368,13 +327,22 @@ function buscarLocal(qraw){
     });
   }
 
-  /***** Cargar clientes *****/
+  /***** Cargar clientes (incluye uso_cfdi) *****/
   async function cargarClientes(){
     clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
     const snap = await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
     snap.forEach(d=>{
       const c=d.data(); if(c.activo===false) return;
-      const cli={id:d.id, nombre:c.nombre||"", alias:c.alias||"", telefono:c.telefono||"", ciudad:c.ciudad||"", rfc:c.rfc||"", ocupa_factura:!!c.ocupa_factura};
+      const cli={
+        id:d.id,
+        nombre:c.nombre||"",
+        alias:c.alias||"",
+        telefono:c.telefono||"",
+        ciudad:c.ciudad||"",
+        rfc:c.rfc||"",
+        ocupa_factura:!!c.ocupa_factura,
+        uso_cfdi: c.uso_cfdi || ""
+      };
       clientes.push(cli);
       const opt=document.createElement("option");
       opt.value=cli.nombre;
@@ -382,6 +350,7 @@ function buscarLocal(qraw){
       dl.appendChild(opt);
     });
   }
+
   elCliente.addEventListener("change",()=>{
     const v=normaliza(elCliente.value);
     clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;
@@ -411,7 +380,7 @@ function buscarLocal(qraw){
         <td>${it.nombre}</td>
         <td>${it.cantidad.toFixed(2)}</td>
         <td>${money(it.importe)}</td>
-        <td><button class="del">✕</button></td>`;
+        <td class="del-col"><button class="del">✕</button></td>`;
       tr.querySelector('.del').onclick=()=>delItem(it.id);
       elTbody.appendChild(tr);
     });
@@ -421,327 +390,298 @@ function buscarLocal(qraw){
     lblTotal.textContent=money(total);
   }
 
-// Función para agregar un producto al carrito
-function addProduct(prod, cantidad = 1){
-  // Si no se ha seleccionado un producto, no hacer nada
-  if(!prod) return;
-
-  // Aseguramos que la cantidad sea mayor a 0.01
-  const cant = Math.max(0.01, Number(cantidad) || 1);
-  
-  // Obtenemos el precio del producto
-  const precio = priceOf(prod);
-
-  // Verificamos si el producto ya existe en el carrito
-  const ex = carrito.find(x => x.id === prod.id);
-
-  // Si el producto ya está en el carrito, aumentamos la cantidad
-  if(ex) {
-    ex.cantidad += cant;
-    ex.importe = ex.cantidad * precio;
-  } else {
-    // Si el producto no está, lo agregamos con la cantidad especificada
-    carrito.push({
-      ...prod,
-      cantidad: cant,
-      precioUnit: precio,
-      importe: cant * precio
-    });
+  // eliminar línea del carrito (utilidad)
+  function delItem(id){
+    carrito = carrito.filter(x=>x.id!==id);
+    render();
   }
 
-  // Renderizamos la tabla de productos en el carrito
-  render();
-}
-
-// Modificación para el evento de búsqueda de productos
-elBuscador.addEventListener('input', () => {
-  const cantidad = elCant.value; // Capturamos la cantidad antes de buscar
-  pintarResultados(buscarLocal(elBuscador.value));
-});
-
-// Cuando el usuario hace clic en un producto desde los resultados de búsqueda
-function pintarResultados(hits){
-  elResultados.innerHTML=""; 
-  if(hits.length===0){
-    elResultados.style.display="none"; 
-    return;
+  // Agregar producto
+  function addProduct(prod, cantidad = 1){
+    if(!prod) return;
+    const cant = Math.max(0.01, Number(cantidad) || 1);
+    const precio = priceOf(prod);
+    const ex = carrito.find(x => x.id === prod.id);
+    if(ex) {
+      ex.cantidad += cant;
+      ex.importe = ex.cantidad * precio;
+    } else {
+      carrito.push({...prod, cantidad:cant, precioUnit:precio, importe:cant*precio});
+    }
+    render();
   }
 
-  elResultados.style.display="block";
-  
-  hits.forEach(p => {
-    const div = document.createElement("div");
-    div.className = "result-item";
-    div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
-    
-    // Al hacer clic en un resultado, agregamos el producto con la cantidad ingresada
-    div.onclick = () => {
-      const cantidad = parseFloat(elCant.value || '1'); // Obtención de la cantidad ingresada
-      if (cantidad <= 0) {
-        alert('Por favor ingresa una cantidad válida');
-        return;
-      }
-      addProduct(p, cantidad); // Llamamos a la función de agregar el producto
-      elResultados.style.display = "none"; 
-      elBuscador.value = ""; // Limpiamos el campo de búsqueda
-    };
-    
-    elResultados.appendChild(div);
+  // Resultados de búsqueda
+  elBuscador.addEventListener('input', () => {
+    pintarResultados(buscarLocal(elBuscador.value));
   });
-}
 
-    elBuscador.addEventListener('input', ()=> pintarResultados(buscarLocal(elBuscador.value)));
-elBuscador.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter') {
-    const hits = buscarLocal(elBuscador.value);  // Buscar producto
-    if (hits.length === 1) {
-      // Si solo hay un producto encontrado, solicitamos la cantidad
-      const cantidadInput = prompt("Ingrese la cantidad de salida:");
-      if (cantidadInput && !isNaN(cantidadInput) && cantidadInput > 0) {
-        // Validar si la cantidad es un número mayor a 0
-        addProduct(hits[0], parseFloat(cantidadInput));  // Agregar el producto con la cantidad
-        elBuscador.value = "";  // Limpiar el campo de búsqueda
-      } else {
-        alert("Por favor, ingresa una cantidad válida.");
+  function pintarResultados(hits){
+    elResultados.innerHTML="";
+    if(hits.length===0){ elResultados.style.display="none"; return; }
+    elResultados.style.display="block";
+    hits.forEach(p => {
+      const div = document.createElement("div");
+      div.className = "result-item";
+      div.innerHTML = `<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
+      div.onclick = () => {
+        const cantidad = parseFloat(elCant.value || '1');
+        if (cantidad <= 0) { alert('Por favor ingresa una cantidad válida'); return; }
+        addProduct(p, cantidad);
+        elResultados.style.display="none"; elBuscador.value="";
+      };
+      elResultados.appendChild(div);
+    });
+  }
+
+  elBuscador.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      const hits = buscarLocal(elBuscador.value);
+      if (hits.length === 1) {
+        const cantidadInput = prompt("Ingrese la cantidad de salida:");
+        if (cantidadInput && !isNaN(cantidadInput) && cantidadInput > 0) {
+          addProduct(hits[0], parseFloat(cantidadInput));
+          elBuscador.value = "";
+        } else { alert("Por favor, ingresa una cantidad válida."); }
       }
     }
+  });
+
+  /***** Cobro + Firestore *****/
+  const modalCobro = document.getElementById('modalCobro');
+  const cobroTotal = document.getElementById('cobroTotal');
+  const metodoPago = document.getElementById('metodoPago');
+  const bloqueEfectivo = document.getElementById('bloqueEfectivo');
+  const montoRecibido = document.getElementById('montoRecibido');
+  const montoCambio = document.getElementById('montoCambio');
+  const notasCobro = document.getElementById('notasCobro');
+
+  function abrirCobro(){
+    if(carrito.length===0){ alert('Agrega productos primero'); return; }
+    elResultados.style.display='none';
+    document.body.classList.add('modal-open');
+    const { total } = calcularTotalesConImpuestosIncluidos()
+    cobroTotal.textContent = money(total);
+    montoRecibido.value=''; montoCambio.textContent=money(0);
+    notasCobro.value=''; metodoPago.value='efectivo'; bloqueEfectivo.style.display='block';
+    modalCobro.style.display='flex';
+    setTimeout(()=>montoRecibido.focus(), 50);
   }
-});
 
-    /***** Cobro + Firestore *****/
-    const modalCobro = document.getElementById('modalCobro');
-    const cobroTotal = document.getElementById('cobroTotal');
-    const metodoPago = document.getElementById('metodoPago');
-    const bloqueEfectivo = document.getElementById('bloqueEfectivo');
-    const montoRecibido = document.getElementById('montoRecibido');
-    const montoCambio = document.getElementById('montoCambio');
-    const notasCobro = document.getElementById('notasCobro');
+  function cerrarCobro(){ modalCobro.style.display='none'; document.body.classList.remove('modal-open'); }
 
-    function abrirCobro(){
-      if(carrito.length===0){ alert('Agrega productos primero'); return; }
-      elResultados.style.display='none';
-      document.body.classList.add('modal-open');
-      const { total } = calcularTotalesConImpuestosIncluidos()
+  metodoPago.addEventListener('change', ()=>{
+    const isCash = metodoPago.value==='efectivo' || metodoPago.value==='mixto';
+    bloqueEfectivo.style.display = isCash ? 'block' : 'none';
+  });
 
-      cobroTotal.textContent = money(total);
-      montoRecibido.value=''; montoCambio.textContent=money(0);
-      notasCobro.value=''; metodoPago.value='efectivo'; bloqueEfectivo.style.display='block';
-      modalCobro.style.display='flex';
-      setTimeout(()=>montoRecibido.focus(), 50);
-    }
-    function cerrarCobro(){ modalCobro.style.display='none'; document.body.classList.remove('modal-open'); }
-    metodoPago.addEventListener('change', ()=>{
-      const isCash = metodoPago.value==='efectivo' || metodoPago.value==='mixto';
-      bloqueEfectivo.style.display = isCash ? 'block' : 'none';
+  montoRecibido.addEventListener('input', ()=>{
+    const { total } = calcularTotalesConImpuestosIncluidos();
+    const recibido = parseFloat(montoRecibido.value||'0');
+    const cambio = Math.max(0, recibido - total);
+    montoCambio.textContent = money(cambio);
+  });
+
+  async function getNextFolio(db){
+    const ref = doc(db, 'consecutivos', rutaId);
+    const folio = await runTransaction(db, async (tx)=>{
+      const snap = await tx.get(ref);
+      if(!snap.exists()){ tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1; }
+      const actual = Number(snap.data().valor||0)+1;
+      tx.update(ref,{valor:actual, actualizado:serverTimestamp()});
+      return actual;
     });
-    montoRecibido.addEventListener('input', ()=>{
-      const { total } = calcularTotalesConImpuestosIncluidos();
+    return `RV-${String(folio).padStart(6,'0')}`;
+  }
+
+  async function guardarVentaEnFirestore(payload){
+    const col = collection(db, 'rutas_venta', rutaId, 'ventas');
+    const docRef = await addDoc(col, payload);
+    return docRef.id;
+  }
+
+  // ---- Ticket ----
+  function rellenarTicket({folio, fechaTxt, clienteTxt, metodo, recibido, cambio, notas}){
+    document.getElementById('tFolio').textContent = `Folio: ${folio}`;
+    document.getElementById('tFecha').textContent = fechaTxt;
+    document.getElementById('tAtendio').textContent = ATENDIO;
+
+    const partes = [];
+    partes.push(`Cliente: ${clienteTxt}`);
+    if(clienteSeleccionado){
+      if(clienteSeleccionado.telefono) partes.push(`Tel: ${clienteSeleccionado.telefono}`);
+      if(clienteSeleccionado.ciudad)   partes.push(clienteSeleccionado.ciudad);
+    }
+    document.getElementById('tCliente').textContent = partes.join(' · ');
+    document.getElementById('tTipo').textContent = "Público";
+
+    const tLineas = document.getElementById('tLineas');
+    tLineas.innerHTML='';
+    carrito.forEach(it=>{
+      const fila = document.createElement('div');
+      fila.className='t-row';
+      const desc = document.createElement('span');
+      desc.className='t-desc';
+      desc.textContent = `${it.cantidad.toFixed(2)} ${it.nombre}`;
+      const imp = document.createElement('span');
+      imp.className='t-imp';
+      imp.textContent = money(it.importe);
+      fila.appendChild(desc); fila.appendChild(imp);
+      tLineas.appendChild(fila);
+    });
+
+    const { subtotal, impuestos, total } = calcularTotalesConImpuestosIncluidos();
+    document.getElementById('tSubtotal').textContent = money(subtotal);
+    document.getElementById('tImpuestos').textContent = money(impuestos);
+    document.getElementById('tTotal').textContent = money(total);
+
+    document.getElementById('tMetodo').textContent = metodo.toUpperCase();
+    const rRow = document.getElementById('tRecibidoRow');
+    if(metodo==='efectivo' || metodo==='mixto'){
+      rRow.style.display='block';
+      document.getElementById('tRecibido').textContent = money(recibido);
+      document.getElementById('tCambio').textContent = money(cambio);
+    }else{
+      rRow.style.display='none';
+    }
+
+    const notasExtra = [];
+    if(clienteSeleccionado){
+      notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura ? 'Sí' : 'No'}`);
+      if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.rfc){
+        notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);
+      }
+      // --- NUEVO: Uso de CFDI desde el cliente ---
+      if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.uso_cfdi){
+        notasExtra.push(`Uso CFDI: ${cfdiDesc(clienteSeleccionado.uso_cfdi)} (${clienteSeleccionado.uso_cfdi})`);
+      }
+    }
+    if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
+    document.getElementById('tNotas').textContent = notasExtra.join(' · ');
+  }
+
+  async function confirmarCobro(){
+    try{
+      const { subtotal, impuestos, total } = calcularTotalesConImpuestosIncluidos();
+      const clienteTxt = elCliente.value || 'Mostrador';
+      const metodo = metodoPago.value;
+
+      if(metodo==='efectivo' || metodo==='mixto'){
+        const recibido = parseFloat(montoRecibido.value||'0');
+        if(recibido < total){ alert('El pago recibido es menor que el total.'); return; }
+      }
+
       const recibido = parseFloat(montoRecibido.value||'0');
       const cambio = Math.max(0, recibido - total);
-      montoCambio.textContent = money(cambio);
-    });
+      const notas = (notasCobro.value||'').trim();
 
-    async function getNextFolio(db){
-      const ref = doc(db, 'consecutivos', rutaId);
-      const folio = await runTransaction(db, async (tx)=>{
-        const snap = await tx.get(ref);
-        if(!snap.exists()){ tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1; }
-        const actual = Number(snap.data().valor||0)+1;
-        tx.update(ref,{valor:actual, actualizado:serverTimestamp()});
-        return actual;
+      const folio = await getNextFolio(db);
+      const fecha = new Date(); const fechaTxt = fecha.toLocaleString();
+
+      const venta = {
+        folio, rutaId,
+        fecha: serverTimestamp(), fecha_txt: fechaTxt,
+        cliente: clienteTxt,
+        cliente_info: clienteSeleccionado ? {
+          id: clienteSeleccionado.id,
+          ocupa_factura: !!clienteSeleccionado.ocupa_factura,
+          rfc: clienteSeleccionado.rfc || '',
+          telefono: clienteSeleccionado.telefono || '',
+          ciudad: clienteSeleccionado.ciudad || '',
+          estado: clienteSeleccionado.estado || '',
+          cp: clienteSeleccionado.cp || '',
+          direccion: clienteSeleccionado.direccion || '',
+          uso_cfdi: clienteSeleccionado.uso_cfdi || ''  // NUEVO: se guarda
+        } : null,
+        atendio: ATENDIO,
+        tipo_precio: "publico",
+        metodo_pago: metodo,
+        recibido: (metodo==='efectivo'||metodo==='mixto') ? recibido : 0,
+        cambio:   (metodo==='efectivo'||metodo==='mixto') ? cambio   : 0,
+        subtotal, impuestos, total,
+        notas,
+        detalle: carrito.map(it=>({
+          id: it.id, nombre: it.nombre, cantidad: it.cantidad,
+          precio_unit: it.precioUnit, importe: it.importe,
+          iva_tasa: Number(it.ivaTasa||0),
+          ieps_tasa: Number(it.iepsTasa||0),
+          precio_publico: it.precioPublico
+        }))
+      };
+
+      const docId = await guardarVentaEnFirestore(venta);
+
+      rellenarTicket({folio, fechaTxt, clienteTxt, metodo, recibido, cambio, notas});
+      window.print();
+
+      carrito = []; render(); cerrarCobro();
+
+      const ventas = JSON.parse(localStorage.getItem('pos_ruta_ventas')||'[]');
+      ventas.push({docId, ...venta, fecha_txt: fechaTxt});
+      localStorage.setItem('pos_ruta_ventas', JSON.stringify(ventas));
+    }catch(err){
+      console.error(err);
+      alert('No se pudo guardar la venta en Firebase. Revisa conexión y vuelve a intentar.');
+    }
+  }
+
+  /***** Corte del día *****/
+  async function corteDelDia(){
+    try{
+      const start = new Date(); start.setHours(0,0,0,0);
+      const end   = new Date(); end.setHours(23,59,59,999);
+      const tsStart = Timestamp.fromDate(start);
+      const tsEnd   = Timestamp.fromDate(end);
+
+      const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
+      const q = query(ventasRef, where('fecha','>=', tsStart), where('fecha','<', tsEnd), orderBy('fecha','asc'));
+      const snap = await getDocs(q);
+      if(snap.empty){ alert('No hay ventas registradas hoy.'); return; }
+
+      let total = 0, conteo = 0;
+      const desg = { efectivo:0, tarjeta:0, transferencia:0, mixto:0 };
+      snap.forEach(s=>{
+        const v = s.data(); const t = Number(v.total||0);
+        total += t; conteo += 1;
+        const m = (v.metodo_pago||'').toLowerCase();
+        if(m==='efectivo') desg.efectivo += t;
+        else if(m==='tarjeta') desg.tarjeta += t;
+        else if(m==='transferencia') desg.transferencia += t;
+        else if(m==='mixto') desg.mixto += t;
       });
-      return `RV-${String(folio).padStart(6,'0')}`;
-    }
-    async function guardarVentaEnFirestore(payload){
-      const col = collection(db, 'rutas_venta', rutaId, 'ventas');
-      const docRef = await addDoc(col, payload);
-      return docRef.id;
-    }
 
-    // Rellena ticket (usa las clases y el CSS de impresión)
-function rellenarTicket({folio, fechaTxt, clienteTxt, metodo, recibido, cambio, notas}){
-  document.getElementById('tFolio').textContent = `Folio: ${folio}`;
-  document.getElementById('tFecha').textContent = fechaTxt;
-  document.getElementById('tAtendio').textContent = ATENDIO;
+      const folioCorte = 'C-' + new Date().toISOString().replaceAll(/[-:T.Z]/g,'').slice(0,14);
+      const fechaTxt = new Date().toLocaleString();
 
-  const partes = [];
-  partes.push(`Cliente: ${clienteTxt}`);
-  if(clienteSeleccionado){
-    if(clienteSeleccionado.telefono) partes.push(`Tel: ${clienteSeleccionado.telefono}`);
-    if(clienteSeleccionado.ciudad)   partes.push(clienteSeleccionado.ciudad);
-  }
-  document.getElementById('tCliente').textContent = partes.join(' · ');
-  document.getElementById('tTipo').textContent = "Público";
+      document.getElementById('tFolio').textContent = `CORTE: ${folioCorte}`;
+      document.getElementById('tFecha').textContent = fechaTxt;
+      document.getElementById('tAtendio').textContent = ATENDIO;
+      document.getElementById('tCliente').textContent = `Ruta: ${rutaId}`;
+      document.getElementById('tTipo').textContent = 'Corte del día';
 
-  const tLineas = document.getElementById('tLineas'); 
-  tLineas.innerHTML='';
-  carrito.forEach(it=>{
-    const fila = document.createElement('div'); 
-    fila.className='t-row';
+      const tLineas = document.getElementById('tLineas'); tLineas.innerHTML='';
+      const mk = (l,r)=>{ const d=document.createElement('div'); d.className='t-row';
+        const a=document.createElement('span'); a.className='t-desc'; a.textContent=l;
+        const b=document.createElement('span'); b.className='t-imp'; b.textContent=money(r);
+        d.appendChild(a); d.appendChild(b); return d; };
+      tLineas.appendChild(mk('EFECTIVO',desg.efectivo));
+      tLineas.appendChild(mk('TARJETA',desg.tarjeta));
+      tLineas.appendChild(mk('TRANSFER',desg.transferencia));
+      tLineas.appendChild(mk('MIXTO',desg.mixto));
 
-    // descripción recortada con elipsis
-    const desc = document.createElement('span'); 
-    desc.className='t-desc';
-    desc.textContent = `${it.cantidad.toFixed(2)} ${it.nombre}`;
+      document.getElementById('tSubtotal').textContent = money(total);
+      document.getElementById('tImpuestos').textContent = money(0);
+      document.getElementById('tTotal').textContent = money(total);
+      document.getElementById('tMetodo').textContent = '—';
+      document.getElementById('tRecibidoRow').style.display='none';
+      document.getElementById('tNotas').textContent = 'Fin de día';
 
-    // total importe (cantidad * precio)
-    const imp = document.createElement('span'); 
-    imp.className='t-imp'; 
-    imp.textContent = money(it.importe);
-
-    fila.appendChild(desc); 
-    fila.appendChild(imp); 
-    tLineas.appendChild(fila);
-  });
-
-const { subtotal, impuestos, total } = calcularTotalesConImpuestosIncluidos();
-document.getElementById('tSubtotal').textContent = money(subtotal);
-document.getElementById('tImpuestos').textContent = money(impuestos);
-document.getElementById('tTotal').textContent = money(total);
-
-  document.getElementById('tMetodo').textContent = metodo.toUpperCase();
-  const rRow = document.getElementById('tRecibidoRow');
-  if(metodo==='efectivo' || metodo==='mixto'){
-    rRow.style.display='block';
-    document.getElementById('tRecibido').textContent = money(recibido);
-    document.getElementById('tCambio').textContent = money(cambio);
-  }else{
-    rRow.style.display='none';
-  }
-
-  const notasExtra = [];
-  if(clienteSeleccionado){
-    notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura ? 'Sí' : 'No'}`);
-    if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.rfc){
-      notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);
+      window.print();
+    }catch(err){
+      console.error(err);
+      alert('No se pudo generar el corte. Revisa la conexión.');
     }
   }
-  if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
-  document.getElementById('tNotas').textContent = notasExtra.join(' · ');
-}
-    async function confirmarCobro(){
-      try{
-        const { subtotal, impuestos, total } = calcularTotalesConImpuestosIncluidos();
-        const clienteTxt = elCliente.value || 'Mostrador';
-        const metodo = metodoPago.value;
-
-        // Validación de efectivo / mixto
-        if(metodo==='efectivo' || metodo==='mixto'){
-          const recibido = parseFloat(montoRecibido.value||'0');
-          if(recibido < total){ alert('El pago recibido es menor que el total.'); return; }
-        }
-
-        const recibido = parseFloat(montoRecibido.value||'0');
-        const cambio = Math.max(0, recibido - total);
-        const notas = (notasCobro.value||'').trim();
-
-        const folio = await getNextFolio(db);
-        const fecha = new Date(); const fechaTxt = fecha.toLocaleString();
-
-        const venta = {
-          folio, rutaId,
-          fecha: serverTimestamp(), fecha_txt: fechaTxt,
-          cliente: clienteTxt,
-          cliente_info: clienteSeleccionado ? {
-            id: clienteSeleccionado.id,
-            ocupa_factura: !!clienteSeleccionado.ocupa_factura,
-            rfc: clienteSeleccionado.rfc || '',
-            telefono: clienteSeleccionado.telefono || '',
-            ciudad: clienteSeleccionado.ciudad || '',
-            estado: clienteSeleccionado.estado || '',
-            cp: clienteSeleccionado.cp || '',
-            direccion: clienteSeleccionado.direccion || ''
-          } : null,
-          atendio: ATENDIO,
-          tipo_precio: "publico",
-          metodo_pago: metodo,
-          recibido: (metodo==='efectivo'||metodo==='mixto') ? recibido : 0,
-          cambio:   (metodo==='efectivo'||metodo==='mixto') ? cambio   : 0,
-         subtotal, impuestos, total,   // 👈 aquí está la corrección
-          notas,
-  detalle: carrito.map(it=>({
-    id: it.id, nombre: it.nombre, cantidad: it.cantidad,
-    precio_unit: it.precioUnit, importe: it.importe,
-    iva_tasa: Number(it.ivaTasa||0), 
-    ieps_tasa: Number(it.iepsTasa||0),   // puedes guardar también el ieps si quieres
-    precio_publico: it.precioPublico
-  }))
-};
-
-        const docId = await guardarVentaEnFirestore(venta);
-
-        rellenarTicket({folio, fechaTxt, clienteTxt, metodo, recibido, cambio, notas});
-        window.print();
-
-        carrito = []; render(); cerrarCobro();
-
-        const ventas = JSON.parse(localStorage.getItem('pos_ruta_ventas')||'[]');
-        ventas.push({docId, ...venta, fecha_txt: fechaTxt});
-        localStorage.setItem('pos_ruta_ventas', JSON.stringify(ventas));
-      }catch(err){
-        console.error(err);
-        alert('No se pudo guardar la venta en Firebase. Revisa conexión y vuelve a intentar.');
-      }
-    }
-
-    /***** Corte del día *****/
-    async function corteDelDia(){
-      try{
-        const start = new Date(); start.setHours(0,0,0,0);
-        const end   = new Date(); end.setHours(23,59,59,999);
-        const tsStart = Timestamp.fromDate(start);
-        const tsEnd   = Timestamp.fromDate(end);
-
-        const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
-        const q = query(ventasRef, where('fecha','>=', tsStart), where('fecha','<', tsEnd), orderBy('fecha','asc'));
-        const snap = await getDocs(q);
-        if(snap.empty){ alert('No hay ventas registradas hoy.'); return; }
-
-        let total = 0, conteo = 0;
-        const desg = { efectivo:0, tarjeta:0, transferencia:0, mixto:0 };
-        snap.forEach(s=>{
-          const v = s.data(); const t = Number(v.total||0);
-          total += t; conteo += 1;
-          const m = (v.metodo_pago||'').toLowerCase();
-          if(m==='efectivo') desg.efectivo += t;
-          else if(m==='tarjeta') desg.tarjeta += t;
-          else if(m==='transferencia') desg.transferencia += t;
-          else if(m==='mixto') desg.mixto += t;
-        });
-
-        const folioCorte = 'C-' + new Date().toISOString().replaceAll(/[-:T.Z]/g,'').slice(0,14);
-        const fechaTxt = new Date().toLocaleString();
-
-        document.getElementById('tFolio').textContent = `CORTE: ${folioCorte}`;
-        document.getElementById('tFecha').textContent = fechaTxt;
-        document.getElementById('tAtendio').textContent = ATENDIO;
-        document.getElementById('tCliente').textContent = `Ruta: ${rutaId}`;
-        document.getElementById('tTipo').textContent = 'Corte del día';
-
-        const tLineas = document.getElementById('tLineas'); tLineas.innerHTML='';
-        const mk = (l,r)=>{ const d=document.createElement('div'); d.className='t-row';
-          const a=document.createElement('span'); a.className='t-desc'; a.textContent=l;
-          const b=document.createElement('span'); b.className='t-imp'; b.textContent=money(r);
-          d.appendChild(a); d.appendChild(b); return d; };
-        tLineas.appendChild(mk('EFECTIVO',desg.efectivo));
-        tLineas.appendChild(mk('TARJETA',desg.tarjeta));
-        tLineas.appendChild(mk('TRANSFER',desg.transferencia));
-        tLineas.appendChild(mk('MIXTO',desg.mixto));
-
-        document.getElementById('tSubtotal').textContent = money(total);
-       document.getElementById('tImpuestos').textContent = money(0);
-        document.getElementById('tTotal').textContent = money(total);
-        document.getElementById('tMetodo').textContent = '—';
-        document.getElementById('tRecibidoRow').style.display='none';
-        document.getElementById('tNotas').textContent = 'Fin de día';
-
-        window.print();
-      }catch(err){
-        console.error(err);
-        alert('No se pudo generar el corte. Revisa la conexión.');
-      }
-    }
-
     // Botones
     document.getElementById('btnCobrar').onclick = abrirCobro;
     document.getElementById('btnCancelarCobro').onclick = cerrarCobro;
