@@ -462,7 +462,6 @@ elCant.addEventListener('keydown', (ev) => {
 });
 
 // Función para agregar el producto al carrito
-function addProduct(prod, cantidad = 1) {
   if (!prod) return;
   const cant = Math.max(0.01, cantidad);
   const precio = priceOf(prod);
