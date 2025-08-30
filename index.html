@@ -18,17 +18,19 @@
       display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
     }
 
-    header{
-      position:sticky; top:0; z-index:50;
-      background:rgba(0,0,0,.6); color:#fff; padding:10px 14px;
-      display:flex; justify-content:center; align-items:center; gap:8px;
-      font-weight:700; font-size:18px; backdrop-filter:saturate(120%) blur(4px);
-    }
-   header img{
-  height:80px;                /* tamaño del logo */
-  max-height:55px;            /* evita que el header crezca más */
-  object-fit:contain;         /* mantiene proporción */
-  filter:drop-shadow(0 0 2px rgba(0,0,0,.4));
+header{
+  position:sticky; top:0; z-index:50;
+  background:rgba(0,0,0,.6);
+  color:#fff;
+  padding:10px 14px;
+  display:flex; justify-content:center; align-items:center; gap:8px;
+  font-weight:700; font-size:18px;
+  backdrop-filter:saturate(120%) blur(4px);
+  height:45px;       /* 👈 altura fija */
+}
+header img{
+  height:55px;       /* 👈 ajusta el logo sin crecer el fondo */
+  object-fit:contain;
 }
 
     .wrap{flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto}
