@@ -297,6 +297,21 @@
   </div>
 
 <script type="module">
+  // Función para realizar la búsqueda de productos
+function buscarLocal(qraw){
+  const q = (qraw || "").trim();
+  if (!q) return [];
+
+  const idByCode = codeIndex.get(q);
+  if (idByCode) {
+    const p = catalogo.find(x => x.id === idByCode);
+    if (p) return [p];
+  }
+
+  const nq = normaliza(q);
+  return catalogo.filter(p => normaliza(p.nombre).includes(nq));
+}
+
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { 
     getFirestore, collection, addDoc, serverTimestamp, runTransaction, doc,
