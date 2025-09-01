@@ -411,7 +411,18 @@
     document.getElementById('tMetodo').textContent=metodo.toUpperCase();
     const rRow=document.getElementById('tRecibidoRow');
     if(metodo==='efectivo'||metodo==='mixto'){rRow.style.display='block'; document.getElementById('tRecibido').textContent=money(recibido); document.getElementById('tCambio').textContent=money(cambio);} else {rRow.style.display='none';}
-    const notasExtra=[]; if(clienteSeleccionado){notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura?'Sí':'No'}`);} if(notas&&notas.trim())notasExtra.push(`Notas: ${notas.trim()}`); document.getElementById('tNotas').textContent=notasExtra.join(' · ');
+    const notasExtra = [];
+if(clienteSeleccionado){
+  notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura ? 'Sí' : 'No'}`);
+  if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.rfc){
+    notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);
+  }
+  if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.uso_cfdi){
+    notasExtra.push(`Uso CFDI: ${cfdiDesc(clienteSeleccionado.uso_cfdi)} (${clienteSeleccionado.uso_cfdi})`);
+  }
+}
+if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
+document.getElementById('tNotas').textContent = notasExtra.join(' · ');
   }
 
   async function confirmarCobro(){
