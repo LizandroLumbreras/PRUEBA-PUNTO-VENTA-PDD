@@ -15,7 +15,7 @@
     html,body{height:100%}
     body{
       margin:0; font-family:'Poppins',system-ui,Arial; color:#111; background:var(--bg-grad);
-      display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
+      display:flex; flex-direction:column;
     }
 
     header{
@@ -34,7 +34,7 @@
     .controls{ display:flex; flex-direction:column; gap:10px; }
     .field{
       display:flex; gap:8px; background:rgba(255,255,255,.12); padding:10px; border-radius:var(--radius-sm);
-      align-items:center; backdrop-filter:blur(2px);
+      align-items:center;
     }
     .field label{min-width:78px; color:#fff; font-size:13px}
     .field input{ flex:1; padding:10px 12px; border:none; border-radius:8px; font-size:15px; background:#fff; outline:none; }
@@ -58,10 +58,7 @@
     thead th:nth-child(3){ width:20%; text-align:right; }
     thead th:nth-child(4){ width:10%; text-align:center; }
     td.del-col{ text-align:center; }
-    td.del-col .del{
-      background:#e74c3c; color:#fff; border:none; border-radius:50%;
-      width:22px; height:22px; font-size:14px; line-height:20px; cursor:pointer;
-    }
+    td.del-col .del{background:#e74c3c; color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:14px; line-height:20px; cursor:pointer;}
     td.del-col .del:hover{ background:#c0392b; }
 
     .totals{ display:flex; flex-direction:column; gap:6px; padding:12px 14px; background:#fff; }
@@ -74,55 +71,37 @@
       width:100%; border:none; padding:14px; border-radius:12px; font-size:18px; font-weight:700; color:#fff;
       background:linear-gradient(180deg,var(--resalte),#094d85); box-shadow:var(--shadow); cursor:pointer;
     }
-    .btn:active{ transform:translateY(1px) }
     #btnCorte{ background:linear-gradient(180deg,#1e8e3e,#146329); margin-top:10px; }
-
-    #modalCobro{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center; }
-    .modal-card{ width:min(520px,92vw); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
-    .modal-h{ padding:12px 16px; background:#0c6cbd; color:#fff; font-weight:700; }
-    .modal-b{ padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
-    .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
-    body.modal-open{ overflow:hidden; }
 
     #ticketArea{ display:none; }
     @media print{
       :root{ --ticket-mm:72; --ticket-pad-mm:1; --ticket-font:18px; --line-height:1.08; }
       @page{ size: calc(var(--ticket-mm) * 1mm) auto; margin:0; }
-      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; }
       body *{ visibility:hidden!important; }
       #ticketArea, #ticketArea *{ visibility:visible!important; }
-      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; padding:0; margin:0; z-index:99999; }
-      #tTipoRow{ display:none !important; }
-      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; padding:0 calc(var(--ticket-pad-mm) * 1mm); box-sizing:border-box; font:var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif; color:#000; text-align:left; overflow:hidden; }
-      .ticket .t-header{ text-align:center; margin:2px 0; }
-      .ticket img{ display:inline-block; max-width:100%; height:auto; }
-      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
-      .ticket .t-row{ display:flex!important; justify-content:space-between; align-items:center; gap:6px; white-space:nowrap!important; margin:2px 0; }
-      .ticket .t-desc{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap!important; text-align:left; }
-      .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap!important; }
-      .ticket .t-totals{ text-align:right; }
-      .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
-      .ticket .t-thanks{ text-align:center; margin-top:8px; }
-      .ticket .t-strong{ font-size: calc(var(--ticket-font) + 2px); }
-      .ticket .t-header img{ max-width:142px!important; }
-      .ticket .t-header.biz{ font-size: calc(var(--ticket-font) - 3px); }
-      .ticket .t-core,.ticket .t-core *{ font-size: calc(var(--ticket-font) - 3px); }
+      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; }
+      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; }
     }
 
-    /* === LOGO FLOTANTE === */
-    #logoFlotante {
+    /* === LOGO FLOTANTE CON FONDO === */
+    #overlayLogo {
       position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) scale(0.8);
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5000;
+    }
+    #logoFlotante {
+      transform: scale(0.8);
       opacity: 0;
       transition: all 0.4s ease-in-out;
-      z-index: 5000;
-      pointer-events: none;
     }
-    #logoFlotante.mostrar {
+    #overlayLogo.mostrar #logoFlotante {
       opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
+      transform: scale(1);
     }
   </style>
 </head>
@@ -150,27 +129,6 @@
       </div>
     </section>
 
-    <section class="card">
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Cant.</th>
-              <th>Importe</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-      </div>
-      <div class="totals">
-        <div class="row muted"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
-        <div class="row muted"><span>Impuestos</span><span id="lblImpuestos">$0.00</span></div>
-        <div class="row big"><span>Total</span><span id="lblTotal">$0.00</span></div>
-      </div>
-    </section>
-
     <section class="actions">
       <button class="btn" id="btnCobrar">Cobrar</button>
       <button class="btn" id="btnCorte">Corte del día</button>
@@ -180,129 +138,125 @@
   <!-- Ticket -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
-      <div class="t-header"><img src="logo_proveedora.webp" alt="Logo"></div>
+      <div class="t-header"><img src="logo_proveedora.webp"></div>
       <div class="t-header t-strong">La Proveedora</div>
       <div class="t-header t-strong">Ruta de Venta</div>
-      <hr>
-      <div class="t-header biz">MADERO 690 SUR, CENTRO</div>
-      <div class="t-header biz">LINARES, NUEVO LEÓN, 67700</div>
-      <div class="t-header biz">RFC: PDD-031204-KL5</div>
-      <div class="t-header biz">TEL: (821) 2121805</div>
-      <div class="t-header biz">RÉGIMEN GENERAL DE LEY</div>
-      <div class="t-header biz">PERSONAS MORALES</div>
       <hr>
       <div class="t-header t-core" id="tFolio"></div>
       <div class="t-header t-core" id="tFecha"></div>
       <div class="t-header t-core">Atendió: <span id="tAtendio"></span></div>
       <hr>
       <div class="t-core" id="tCliente"></div>
-      <div class="t-core" id="tTipoRow">Tipo precio: <span id="tTipo"></span></div>
-      <hr>
       <div class="t-core" id="tLineas"></div>
       <hr>
       <div class="t-totals t-core">
-        <div class="row"><span>Subtotal</span><span id="tSubtotal"></span></div>
-        <div class="row"><span>Impuestos</span><span id="tImpuestos"></span></div>
-        <div class="row" style="font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
+        <div class="row"><span>Total</span><span id="tTotal"></span></div>
       </div>
-      <hr>
-      <div class="t-core">Método: <span id="tMetodo"></span></div>
-      <div class="t-core" id="tRecibidoRow">Pago: <span id="tRecibido"></span> · Cambio: <span id="tCambio"></span></div>
       <div id="tNotas"></div>
       <div class="t-thanks">¡Gracias por su compra!</div>
     </div>
   </div>
 
-  <!-- LOGO FLOTANTE -->
-  <img id="logoFlotante" src="logo_proveedora.webp" alt="Logo Proveedora" width="180">
+  <!-- Overlay con logo -->
+  <div id="overlayLogo"><img id="logoFlotante" src="logo_proveedora.webp" width="180"></div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
-           getDocs, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, getDocs, query, where, orderBy, doc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-  // ⚠️ PON AQUÍ TU CONFIGURACIÓN REAL DE FIREBASE
-  const firebaseConfig = {
-  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+const firebaseConfig = {
+  apiKey: "TU_APIKEY",
   authDomain: "inventariopv-643f1.firebaseapp.com",
   projectId: "inventariopv-643f1",
-  storageBucket: "inventariopv-643f1.firebasestorage.app",
-  messagingSenderId: "96242533231",
-  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
 };
-  const app = initializeApp(firebaseConfig);
-  const db  = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
 
-  const $=s=>document.querySelector(s);
-  const ATENDIO='Juan Serrato',rutaId='ruta_1';
-  const money=n=>'$'+(Number(n)||0).toFixed(2);
-  const pad2=n=>String(n).padStart(2,'0');
-  const toYYYYMMDD=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+const ATENDIO='Juan Serrato', rutaId='ruta_1';
+const $=s=>document.querySelector(s);
+const toYYYYMMDD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const money=n=>'$'+(Number(n)||0).toFixed(2);
 
-  async function calcularResumenDeDia(dateStr){
-    const [Y,M,D]=dateStr.split('-').map(Number);
-    const start=new Date(Y,M-1,D,0,0,0,0),end=new Date(Y,M-1,D,23,59,59,999);
-    const tsStart=Timestamp.fromDate(start),tsEnd=Timestamp.fromDate(end);
-    const qv=query(collection(db,'rutas_venta',rutaId,'ventas'),where('fecha','>=',tsStart),where('fecha','<',tsEnd),orderBy('fecha','asc'));
-    const snap=await getDocs(qv);
-    let total=0,conteo=0;const desg={efectivo:0,tarjeta:0,transferencia:0,mixto:0};
-    snap.forEach(s=>{const v=s.data(),t=Number(v.total||0);total+=t;conteo++;const m=(v.metodo_pago||'').toLowerCase();if(m==='efectivo')desg.efectivo+=t;else if(m==='tarjeta')desg.tarjeta+=t;else if(m==='transferencia')desg.transferencia+=t;else if(m==='mixto')desg.mixto+=t;});
-    return{total,conteo,desg};
-  }
+/* ===== Clientes ===== */
+async function cargarClientes(){
+  const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
+  const dl=document.getElementById("clientesList");
+  dl.innerHTML="";
+  snap.forEach(d=>{
+    const c=d.data();
+    const opt=document.createElement("option");
+    opt.value=c.nombre||"";
+    dl.appendChild(opt);
+  });
+  console.log("Clientes cargados:", snap.size);
+}
 
-  async function guardarCorteSinImprimir(dateStr){
-    const { total, conteo, desg } = await calcularResumenDeDia(dateStr);
-    if (conteo === 0) {
-      alert('No hay ventas en ' + dateStr);
-      return false;
-    }
-    const corteRef = doc(db, 'rutas_venta', rutaId, 'cortes', dateStr);
-    await setDoc(corteRef, {
-      fecha_dia: dateStr,
-      total,
-      tickets: conteo,
-      desglose: desg,
-      atendio: ATENDIO,
-      creado: serverTimestamp()
-    });
-    return true;
-  }
+/* ===== Productos ===== */
+async function cargarCatalogo(){
+  const snap=await getDocs(collection(db,"productos"));
+  let productos=[];
+  snap.forEach(d=>{
+    const x=d.data();
+    productos.push({id:d.id, nombre:x.concepto||"SIN NOMBRE", codigo:x.codigoBarra||""});
+  });
+  console.log("Productos cargados:", productos.length);
+}
 
-  async function imprimirCorte(dateStr){
-    const { total, conteo, desg } = await calcularResumenDeDia(dateStr);
-    if (conteo === 0) return;
-    const folioCorte=`C-${dateStr.replaceAll('-','')}`,fechaTxt=new Date().toLocaleString();
-    $('#tFolio').textContent=`CORTE: ${folioCorte}`;
-    $('#tFecha').textContent=fechaTxt;
-    $('#tAtendio').textContent=ATENDIO;
-    $('#tCliente').textContent=`Ruta: ${rutaId}`;
-    $('#tTipo').textContent=`Corte del día ${dateStr}`;
-    const tLineas=$('#tLineas');tLineas.innerHTML='';
-    const mk=(l,r)=>{const d=document.createElement('div');d.className='t-row';d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`;return d;};
-    tLineas.appendChild(mk('EFECTIVO',desg.efectivo));
-    tLineas.appendChild(mk('TARJETA',desg.tarjeta));
-    tLineas.appendChild(mk('TRANSFER',desg.transferencia));
-    tLineas.appendChild(mk('MIXTO',desg.mixto));
-    $('#tSubtotal').textContent=money(total);
-    $('#tImpuestos').textContent=money(0);
-    $('#tTotal').textContent=money(total);
-    $('#tMetodo').textContent='—';
-    $('#tRecibidoRow').style.display='none';
-    $('#tNotas').textContent='Fin de día';
-    window.print();
-  }
+/* ===== Corte ===== */
+async function calcularResumenDeDia(dateStr){
+  const [Y,M,D]=dateStr.split('-').map(Number);
+  const start=new Date(Y,M-1,D,0,0,0), end=new Date(Y,M-1,D,23,59,59);
+  const tsStart=Timestamp.fromDate(start), tsEnd=Timestamp.fromDate(end);
+  const qv=query(collection(db,'rutas_venta',rutaId,'ventas'),
+                 where('fecha','>=',tsStart),
+                 where('fecha','<',tsEnd),
+                 orderBy('fecha','asc'));
+  const snap=await getDocs(qv);
+  let total=0;
+  snap.forEach(s=> total += Number(s.data().total||0));
+  return {total,conteo:snap.size};
+}
 
-  async function corteDelDia(){
-    const seguro=confirm("¿Está seguro de realizar el corte del día?");
-    if(!seguro)return;
-    const logo=document.getElementById("logoFlotante");
-    logo.classList.add("mostrar");
-    const hoy=toYYYYMMDD(new Date());
-    const guardado=await guardarCorteSinImprimir(hoy);
-    setTimeout(async()=>{logo.classList.remove("mostrar");if(guardado)await imprimirCorte(hoy);},5000);
-  }
+async function guardarCorte(dateStr){
+  const {total,conteo}=await calcularResumenDeDia(dateStr);
+  if(conteo===0){ alert("No hay ventas en "+dateStr); return false; }
+  await setDoc(doc(db,'rutas_venta',rutaId,'cortes',dateStr),{
+    fecha_dia:dateStr,total,tickets:conteo,atendio:ATENDIO,creado:serverTimestamp()
+  });
+  return true;
+}
 
-  document.getElementById('btnCorte').onclick=corteDelDia;
+async function imprimirCorte(dateStr){
+  const {total,conteo}=await calcularResumenDeDia(dateStr);
+  if(conteo===0)return;
+  $('#tFolio').textContent="CORTE "+dateStr;
+  $('#tFecha').textContent=new Date().toLocaleString();
+  $('#tAtendio').textContent=ATENDIO;
+  $('#tCliente').textContent="Ruta: "+rutaId;
+  $('#tTotal').textContent=money(total);
+  $('#tNotas').textContent="Fin de día";
+  window.print();
+}
+
+async function corteDelDia(){
+  const seguro=confirm("¿Está seguro de realizar el corte del día?");
+  if(!seguro)return;
+  const overlay=$("#overlayLogo");
+  overlay.style.display="flex";
+  overlay.classList.add("mostrar");
+  const hoy=toYYYYMMDD(new Date());
+  const guardado=await guardarCorte(hoy);
+  setTimeout(async()=>{
+    overlay.classList.remove("mostrar");
+    overlay.style.display="none";
+    if(guardado) await imprimirCorte(hoy);
+  },5000);
+}
+
+/* Inicialización */
+document.getElementById("btnCorte").onclick=corteDelDia;
+await cargarClientes();
+await cargarCatalogo();
 </script>
 </body>
 </html>
