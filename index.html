@@ -31,7 +31,6 @@
     header img{ height:75px; object-fit:contain; }
 
     .wrap{flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto}
-
     .controls{ display:flex; flex-direction:column; gap:10px; }
     .field{
       display:flex; gap:8px; background:rgba(255,255,255,.12); padding:10px; border-radius:var(--radius-sm);
@@ -40,7 +39,6 @@
     .field label{min-width:78px; color:#fff; font-size:13px}
     .field input{ flex:1; padding:10px 12px; border:none; border-radius:8px; font-size:15px; background:#fff; outline:none; }
 
-    /* Buscador */
     .searchbox{ position:relative; z-index:300; }
     .search-results{
       position:absolute; left:90px; right:10px; top:calc(100% + 6px);
@@ -52,8 +50,6 @@
     .result-item:hover{ background:#f2f4f7 }
 
     .card{ background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
-
-    /* Tabla */
     .table-wrap{ max-height:260px; overflow:auto; }
     table{ width:100%; border-collapse:collapse; table-layout:fixed; }
     thead th{ background:var(--azul); color:#fff; padding:10px; font-size:13px; position:sticky; top:0; z-index:100; }
@@ -81,7 +77,6 @@
     .btn:active{ transform:translateY(1px) }
     #btnCorte{ background:linear-gradient(180deg,#1e8e3e,#146329); margin-top:10px; }
 
-    /* Modal Cobro */
     #modalCobro{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center; }
     .modal-card{ width:min(520px,92vw); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
     .modal-h{ padding:12px 16px; background:#0c6cbd; color:#fff; font-weight:700; }
@@ -89,7 +84,6 @@
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
     body.modal-open{ overflow:hidden; }
 
-    /* ===== IMPRESIÓN DEL TICKET ===== */
     #ticketArea{ display:none; }
     @media print{
       :root{ --ticket-mm:72; --ticket-pad-mm:1; --ticket-font:18px; --line-height:1.08; }
@@ -167,7 +161,7 @@
     </section>
   </main>
 
-  <!-- Modal de Cobro -->
+  <!-- Modal Cobro -->
   <div id="modalCobro">
     <div class="modal-card">
       <div class="modal-h">Cobro</div>
@@ -205,7 +199,7 @@
     </div>
   </div>
 
-  <!-- Ticket imprimible -->
+  <!-- Ticket -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
       <div class="t-header"><img src="logo_proveedora.webp" alt="Logo"></div>
@@ -246,241 +240,89 @@
   import { getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
            getDocs, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+  // ⚠️ PON AQUÍ TU CONFIGURACIÓN REAL DE FIREBASE
   const firebaseConfig = {
-    apiKey: "TU_APIKEY",
-    authDomain: "inventariopv-643f1.firebaseapp.com",
-    projectId: "inventariopv-643f1",
-    storageBucket: "inventariopv-643f1.appspot.com",
-    messagingSenderId: "96242533231",
-    appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-  };
+  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+  authDomain: "inventariopv-643f1.firebaseapp.com",
+  projectId: "inventariopv-643f1",
+  storageBucket: "inventariopv-643f1.firebasestorage.app",
+  messagingSenderId: "96242533231",
+  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+};
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
-  const $ = (s)=>document.querySelector(s);
-  const elCliente=$('#cliente'), elBuscador=$('#buscador'), elCant=$('#cantidadInput');
-  const elResultados=$('#resultados'), elTbody=$('#tbody');
-  const lblSubtotal=$('#lblSubtotal'), lblTotal=$('#lblTotal'), lblImp=$('#lblImpuestos');
+  const CFDI_DESC={G01:'Adquisición de mercancías',G02:'Devoluciones, descuentos y bonificaciones',G03:'Gastos en General',I01:'Construcciones',S01:'Sin efectos fiscales'};
+  const cfdiDesc=(c)=>CFDI_DESC[c]||c;
 
-  const ATENDIO='Juan Serrato', rutaId='ruta_1';
-  const money=(n)=>'$'+(Number(n)||0).toFixed(2);
+  const $=s=>document.querySelector(s);
+  const elCliente=$('#cliente'),elBuscador=$('#buscador'),elCant=$('#cantidadInput');
+  const elResultados=$('#resultados'),elTbody=$('#tbody');
+  const lblSubtotal=$('#lblSubtotal'),lblTotal=$('#lblTotal'),lblImp=$('#lblImpuestos');
+
+  const ATENDIO='Juan Serrato',rutaId='ruta_1';
+  const money=n=>'$'+(Number(n)||0).toFixed(2);
   const pad2=n=>String(n).padStart(2,'0');
-  const toYYYYMMDD=(date)=>{const d=new Date(date); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;};
+  const toYYYYMMDD=d=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
 
-  let carrito=[], prodSeleccionado=null, clienteSeleccionado=null;
-  let catalogo=[], clientes=[]; const codeIndex=new Map();
+  let carrito=[],prodSeleccionado=null,clienteSeleccionado=null;
+  let catalogo=[],clientes=[];const codeIndex=new Map();
   const normaliza=s=>(s||'').toString().trim().toLowerCase();
 
-  // ===== Catálogo =====
   async function cargarCatalogoDesdeFirestore(){
-    catalogo=[]; codeIndex.clear();
-    const prodSnap=await getDocs(collection(db,'productos'));
-    prodSnap.forEach(d=>{
-      const x=d.data(); if(x.activo===false)return;
-      const prod={id:d.id, nombre:x.concepto||'SIN NOMBRE',
-        codigo:(x.codigoBarra||'').toString(),
-        precioPublico:Number(x.precioPublico||0),
-        ivaTasa:Number(x.ivaTasa||0),
-        iepsTasa:Number(x.iepsTasa||0)};
-      catalogo.push(prod); if(prod.codigo)codeIndex.set(prod.codigo.trim(),prod.id);
+    catalogo=[];codeIndex.clear();
+    const snap=await getDocs(collection(db,'productos'));
+    snap.forEach(d=>{const x=d.data();if(x.activo===false)return;
+      const prod={id:d.id,nombre:x.concepto||'SIN NOMBRE',codigo:(x.codigoBarra||'').toString(),precioPublico:Number(x.precioPublico||0),ivaTasa:Number(x.ivaTasa||0),iepsTasa:Number(x.iepsTasa||0)};
+      catalogo.push(prod);if(prod.codigo)codeIndex.set(prod.codigo.trim(),prod.id);
     });
   }
 
-  // ===== Clientes =====
   async function cargarClientes(){
-    clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
+    clientes=[];const dl=document.getElementById("clientesList");dl.innerHTML="";
     const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
-    snap.forEach(d=>{
-      const c=d.data(); if(c.activo===false)return;
-      const cli={id:d.id,nombre:c.nombre||"",alias:c.alias||"",
-        telefono:c.telefono||"",ciudad:c.ciudad||"",rfc:c.rfc||"",
-        ocupa_factura:!!c.ocupa_factura,uso_cfdi:c.uso_cfdi||""};
-      clientes.push(cli);
-      const opt=document.createElement("option");
-      opt.value=cli.nombre;
-      opt.label=cli.alias?`${cli.nombre} (${cli.alias})`:cli.nombre;
-      dl.appendChild(opt);
+    snap.forEach(d=>{const c=d.data();if(c.activo===false)return;
+      const cli={id:d.id,nombre:c.nombre||"",alias:c.alias||"",telefono:c.telefono||"",ciudad:c.ciudad||"",rfc:c.rfc||"",ocupa_factura:!!c.ocupa_factura,uso_cfdi:c.uso_cfdi||""};
+      clientes.push(cli);const opt=document.createElement("option");opt.value=cli.nombre;opt.label=cli.alias?`${cli.nombre} (${cli.alias})`:cli.nombre;dl.appendChild(opt);
     });
   }
-  elCliente.addEventListener("change",()=>{const v=normaliza(elCliente.value); clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;});
+  elCliente.addEventListener("change",()=>{const v=normaliza(elCliente.value);clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;});
 
   const priceOf=p=>Number(p.precioPublico||0);
 
-  // ===== Totales =====
-  function calcularTotalesConImpuestosIncluidos(){
-    let total=0, impuestos=0;
-    carrito.forEach(it=>{
-      const imp=it.cantidad*it.precioUnit;
-      total+=imp;
-      if(it.ivaTasa>0)impuestos+=(imp*it.ivaTasa)/(1+it.ivaTasa);
-      if(it.iepsTasa>0)impuestos+=(imp*it.iepsTasa)/(1+it.iepsTasa);
-    });
-    const subtotal=total-impuestos;
-    return {subtotal:+subtotal.toFixed(2),impuestos:+impuestos.toFixed(2),total:+total.toFixed(2)};
-  }
+  function calcularTotalesConImpuestosIncluidos(){let total=0,imp=0;carrito.forEach(it=>{const v=it.cantidad*it.precioUnit;total+=v;if(it.ivaTasa>0)imp+=(v*it.ivaTasa)/(1+it.ivaTasa);if(it.iepsTasa>0)imp+=(v*it.iepsTasa)/(1+it.iepsTasa);});const sub=total-imp;return{subtotal:+sub.toFixed(2),impuestos:+imp.toFixed(2),total:+total.toFixed(2)};}
 
-  // ===== Render =====
-  function render(){
-    elTbody.innerHTML="";
-    carrito.forEach(it=>{
-      const tr=document.createElement("tr");
-      tr.innerHTML=`<td>${it.nombre}</td><td>${it.cantidad.toFixed(2)}</td><td>${money(it.importe)}</td>
-        <td class="del-col"><button class="del">✕</button></td>`;
-      tr.querySelector('.del').onclick=()=>delItem(it.id);
-      elTbody.appendChild(tr);
-    });
-    const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
-    lblSubtotal.textContent=money(subtotal);
-    lblImp.textContent=money(impuestos);
-    lblTotal.textContent=money(total);
-  }
+  function render(){elTbody.innerHTML="";carrito.forEach(it=>{const tr=document.createElement("tr");tr.innerHTML=`<td>${it.nombre}</td><td>${it.cantidad.toFixed(2)}</td><td>${money(it.importe)}</td><td class="del-col"><button class="del">✕</button></td>`;tr.querySelector('.del').onclick=()=>delItem(it.id);elTbody.appendChild(tr);});const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();lblSubtotal.textContent=money(subtotal);lblImp.textContent=money(impuestos);lblTotal.textContent=money(total);}
 
-  function delItem(id){ carrito=carrito.filter(x=>x.id!==id); render(); }
-  function addProduct(prod,cantidad=1){
-    if(!prod)return;
-    const cant=Math.max(0.01,Number(cantidad)||1);
-    const precio=priceOf(prod);
-    const ex=carrito.find(x=>x.id===prod.id);
-    if(ex){ex.cantidad+=cant; ex.importe=ex.cantidad*precio;}
-    else{carrito.push({...prod,cantidad:cant,precioUnit:precio,importe:cant*precio});}
-    render();
-  }
+  function delItem(id){carrito=carrito.filter(x=>x.id!==id);render();}
+  function addProduct(prod,c=1){if(!prod)return;const cant=Math.max(0.01,Number(c)||1);const precio=priceOf(prod);const ex=carrito.find(x=>x.id===prod.id);if(ex){ex.cantidad+=cant;ex.importe=ex.cantidad*precio;}else{carrito.push({...prod,cantidad:cant,precioUnit:precio,importe:cant*precio});}render();}
 
-  // ===== Buscador =====
-  function buscarLocal(qraw){
-    const q=(qraw||"").trim(); if(!q)return[];
-    const idByCode=codeIndex.get(q); if(idByCode){const p=catalogo.find(x=>x.id===idByCode); if(p)return[p];}
-    const nq=normaliza(q); return catalogo.filter(p=>normaliza(p.nombre).includes(nq));
-  }
-  function pintarResultados(hits){
-    elResultados.innerHTML=""; if(hits.length===0){elResultados.style.display="none";return;}
-    elResultados.style.display="block";
-    hits.forEach(p=>{
-      const div=document.createElement("div");
-      div.className="result-item"; div.innerHTML=`<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
-      div.onclick=()=>{prodSeleccionado=p; elBuscador.value=p.nombre; elResultados.style.display="none"; elCant.focus(); elCant.select();};
-      elResultados.appendChild(div);
-    });
-  }
+  function buscarLocal(q){q=(q||"").trim();if(!q)return[];const idByCode=codeIndex.get(q);if(idByCode){const p=catalogo.find(x=>x.id===idByCode);if(p)return[p];}const nq=normaliza(q);return catalogo.filter(p=>normaliza(p.nombre).includes(nq));}
+  function pintarResultados(hits){elResultados.innerHTML="";if(hits.length===0){elResultados.style.display="none";return;}elResultados.style.display="block";hits.forEach(p=>{const div=document.createElement("div");div.className="result-item";div.innerHTML=`<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;div.onclick=()=>{prodSeleccionado=p;elBuscador.value=p.nombre;elResultados.style.display="none";elCant.focus();elCant.select();};elResultados.appendChild(div);});}
   elBuscador.addEventListener('input',()=>pintarResultados(buscarLocal(elBuscador.value)));
-  elBuscador.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){const hits=buscarLocal(elBuscador.value.trim()); if(hits.length>=1){prodSeleccionado=hits[0]; elResultados.style.display="none"; elBuscador.value=hits[0].nombre; elCant.focus(); elCant.select();}}});
-  elCant.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){if(!clienteSeleccionado){alert('Selecciona un cliente primero.');elCliente.focus();return;} if(!prodSeleccionado){alert('Selecciona un producto.');elBuscador.focus();return;} const cant=parseFloat(elCant.value||''); if(isNaN(cant)||cant<=0){alert('Ingresa cantidad válida.');elCant.focus();return;} addProduct(prodSeleccionado,cant); prodSeleccionado=null; elBuscador.value=''; elCant.value='1'; elBuscador.focus();}});
+  elBuscador.addEventListener('keydown',ev=>{if(ev.key==='Enter'){const hits=buscarLocal(elBuscador.value.trim());if(hits.length>=1){prodSeleccionado=hits[0];elResultados.style.display="none";elBuscador.value=hits[0].nombre;elCant.focus();elCant.select();}}});
+  elCant.addEventListener('keydown',ev=>{if(ev.key==='Enter'){if(!clienteSeleccionado){alert('Selecciona cliente');elCliente.focus();return;}if(!prodSeleccionado){alert('Selecciona producto');elBuscador.focus();return;}const cant=parseFloat(elCant.value||'');if(isNaN(cant)||cant<=0){alert('Cantidad inválida');return;}addProduct(prodSeleccionado,cant);prodSeleccionado=null;elBuscador.value='';elCant.value='1';elBuscador.focus();}});
 
-  // ===== Cobro =====
-  const modalCobro=document.getElementById('modalCobro');
-  const cobroTotal=document.getElementById('cobroTotal');
-  const metodoPago=document.getElementById('metodoPago');
-  const bloqueEfectivo=document.getElementById('bloqueEfectivo');
-  const montoRecibido=document.getElementById('montoRecibido');
-  const montoCambio=document.getElementById('montoCambio');
-  const notasCobro=document.getElementById('notasCobro');
+  const modalCobro=$('#modalCobro'),cobroTotal=$('#cobroTotal'),metodoPago=$('#metodoPago'),bloqueEfectivo=$('#bloqueEfectivo'),montoRecibido=$('#montoRecibido'),montoCambio=$('#montoCambio'),notasCobro=$('#notasCobro');
+  function abrirCobro(){if(carrito.length===0){alert('Agrega productos');return;}document.body.classList.add('modal-open');const {total}=calcularTotalesConImpuestosIncluidos();cobroTotal.textContent=money(total);montoRecibido.value='';montoCambio.textContent=money(0);notasCobro.value='';metodoPago.value='efectivo';bloqueEfectivo.style.display='block';modalCobro.style.display='flex';}
+  function cerrarCobro(){modalCobro.style.display='none';document.body.classList.remove('modal-open');}
+  metodoPago.addEventListener('change',()=>{bloqueEfectivo.style.display=(metodoPago.value==='efectivo'||metodoPago.value==='mixto')?'block':'none';});
+  montoRecibido.addEventListener('input',()=>{const {total}=calcularTotalesConImpuestosIncluidos();const r=parseFloat(montoRecibido.value||'0');const c=Math.max(0,r-total);montoCambio.textContent=money(c);});
 
-  function abrirCobro(){
-    if(carrito.length===0){alert('Agrega productos primero');return;}
-    document.body.classList.add('modal-open');
-    const {total}=calcularTotalesConImpuestosIncluidos();
-    cobroTotal.textContent=money(total);
-    montoRecibido.value=''; montoCambio.textContent=money(0);
-    notasCobro.value=''; metodoPago.value='efectivo'; bloqueEfectivo.style.display='block';
-    modalCobro.style.display='flex';
-  }
-  function cerrarCobro(){modalCobro.style.display='none'; document.body.classList.remove('modal-open');}
-  metodoPago.addEventListener('change',()=>{const isCash=metodoPago.value==='efectivo'||metodoPago.value==='mixto'; bloqueEfectivo.style.display=isCash?'block':'none';});
-  montoRecibido.addEventListener('input',()=>{const {total}=calcularTotalesConImpuestosIncluidos(); const recibidoX=parseFloat(montoRecibido.value||'0'); const cambio=Math.max(0,recibidoX-total); montoCambio.textContent=money(cambio);});
+  async function getNextFolio(db){const ref=doc(db,'consecutivos',rutaId);const folio=await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()});return 1;}const actual=Number(snap.data().valor||0)+1;tx.update(ref,{valor:actual,actualizado:serverTimestamp()});return actual;});return `RV-${String(folio).padStart(6,'0')}`;}
+  async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas');const docRef=await addDoc(col,payload);return docRef.id;}
 
-  async function getNextFolio(db){
-    const ref=doc(db,'consecutivos',rutaId);
-    const folio=await runTransaction(db,async(tx)=>{const snap=await tx.get(ref); if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1;} const actual=Number(snap.data().valor||0)+1; tx.update(ref,{valor:actual,actualizado:serverTimestamp()}); return actual;});
-    return `RV-${String(folio).padStart(6,'0')}`;
-  }
-  async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas'); const docRef=await addDoc(col,payload); return docRef.id;}
+  function rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}){document.getElementById('tFolio').textContent=`Folio: ${folio}`;document.getElementById('tFecha').textContent=fechaTxt;document.getElementById('tAtendio').textContent=ATENDIO;const partes=[`Cliente: ${clienteTxt}`];if(clienteSeleccionado){if(clienteSeleccionado.telefono)partes.push(`Tel: ${clienteSeleccionado.telefono}`);if(clienteSeleccionado.ciudad)partes.push(clienteSeleccionado.ciudad);}document.getElementById('tCliente').textContent=partes.join(' · ');document.getElementById('tTipo').textContent="Público";const tLineas=$('#tLineas');tLineas.innerHTML='';carrito.forEach(it=>{const fila=document.createElement('div');fila.className='t-row';fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`;tLineas.appendChild(fila);});const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();$('#tSubtotal').textContent=money(subtotal);$('#tImpuestos').textContent=money(impuestos);$('#tTotal').textContent=money(total);$('#tMetodo').textContent=metodo.toUpperCase();const rRow=$('#tRecibidoRow');if(metodo==='efectivo'||metodo==='mixto'){rRow.style.display='block';$('#tRecibido').textContent=money(recibido);$('#tCambio').textContent=money(cambio);}else{rRow.style.display='none';}const notasExtra=[];if(clienteSeleccionado){notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura?'Sí':'No'}`);if(clienteSeleccionado.ocupa_factura&&clienteSeleccionado.rfc){notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);}if(clienteSeleccionado.ocupa_factura&&clienteSeleccionado.uso_cfdi){notasExtra.push(`Uso CFDI: ${cfdiDesc(clienteSeleccionado.uso_cfdi)} (${clienteSeleccionado.uso_cfdi})`);}}if(notas&&notas.trim())notasExtra.push(`Notas: ${notas.trim()}`);$('#tNotas').textContent=notasExtra.join(' · ');}
+  
+  async function confirmarCobro(){try{const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();const clienteTxt=elCliente.value||'Mostrador';const metodo=metodoPago.value;const recibido=parseFloat(montoRecibido.value||'0');if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){alert('Pago insuficiente');return;}const cambio=Math.max(0,recibido-total);const notas=(notasCobro.value||'').trim();const folio=await getNextFolio(db);const fecha=new Date();const fechaTxt=fecha.toLocaleString();const fecha_dia=toYYYYMMDD(fecha);const venta={folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,cliente:clienteTxt,cliente_info:clienteSeleccionado?{id:clienteSeleccionado.id,ocupa_factura:!!clienteSeleccionado.ocupa_factura,rfc:clienteSeleccionado.rfc||'',telefono:clienteSeleccionado.telefono||'',ciudad:clienteSeleccionado.ciudad||'',uso_cfdi:clienteSeleccionado.uso_cfdi||''}:null,atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,subtotal,impuestos,total,notas,detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))};await guardarVentaEnFirestore(venta);rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});window.print();carrito=[];render();cerrarCobro();}catch(err){console.error(err);alert('Error guardando venta');}}
 
-  function rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}){
-    document.getElementById('tFolio').textContent=`Folio: ${folio}`;
-    document.getElementById('tFecha').textContent=fechaTxt;
-    document.getElementById('tAtendio').textContent=ATENDIO;
-    const partes=[`Cliente: ${clienteTxt}`]; if(clienteSeleccionado){if(clienteSeleccionado.telefono)partes.push(`Tel: ${clienteSeleccionado.telefono}`); if(clienteSeleccionado.ciudad)partes.push(clienteSeleccionado.ciudad);}
-    document.getElementById('tCliente').textContent=partes.join(' · ');
-    document.getElementById('tTipo').textContent="Público";
-    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
-    carrito.forEach(it=>{const fila=document.createElement('div'); fila.className='t-row'; fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`; tLineas.appendChild(fila);});
-    const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
-    document.getElementById('tSubtotal').textContent=money(subtotal);
-    document.getElementById('tImpuestos').textContent=money(impuestos);
-    document.getElementById('tTotal').textContent=money(total);
-    document.getElementById('tMetodo').textContent=metodo.toUpperCase();
-    const rRow=document.getElementById('tRecibidoRow');
-    if(metodo==='efectivo'||metodo==='mixto'){rRow.style.display='block'; document.getElementById('tRecibido').textContent=money(recibido); document.getElementById('tCambio').textContent=money(cambio);} else {rRow.style.display='none';}
-    const notasExtra = [];
-if(clienteSeleccionado){
-  notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura ? 'Sí' : 'No'}`);
-  if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.rfc){
-    notasExtra.push(`RFC: ${clienteSeleccionado.rfc}`);
-  }
-  if(clienteSeleccionado.ocupa_factura && clienteSeleccionado.uso_cfdi){
-    notasExtra.push(`Uso CFDI: ${cfdiDesc(clienteSeleccionado.uso_cfdi)} (${clienteSeleccionado.uso_cfdi})`);
-  }
-}
-if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
-document.getElementById('tNotas').textContent = notasExtra.join(' · ');
-  }
+  async function calcularResumenDeDia(dateStr){const [Y,M,D]=dateStr.split('-').map(Number);const start=new Date(Y,M-1,D,0,0,0,0),end=new Date(Y,M-1,D,23,59,59,999);const tsStart=Timestamp.fromDate(start),tsEnd=Timestamp.fromDate(end);const qv=query(collection(db,'rutas_venta',rutaId,'ventas'),where('fecha','>=',tsStart),where('fecha','<',tsEnd),orderBy('fecha','asc'));const snap=await getDocs(qv);let total=0,conteo=0;const desg={efectivo:0,tarjeta:0,transferencia:0,mixto:0};snap.forEach(s=>{const v=s.data(),t=Number(v.total||0);total+=t;conteo++;const m=(v.metodo_pago||'').toLowerCase();if(m==='efectivo')desg.efectivo+=t;else if(m==='tarjeta')desg.tarjeta+=t;else if(m==='transferencia')desg.transferencia+=t;else if(m==='mixto')desg.mixto+=t;});return{total,conteo,desg};}
+  async function generarCorteParaDia(dateStr){const {total,conteo,desg}=await calcularResumenDeDia(dateStr);if(conteo===0){alert('No hay ventas en '+dateStr);return;}const folioCorte=`C-${dateStr.replaceAll('-','')}`,fechaTxt=new Date().toLocaleString();$('#tFolio').textContent=`CORTE: ${folioCorte}`;$('#tFecha').textContent=fechaTxt;$('#tAtendio').textContent=ATENDIO;$('#tCliente').textContent=`Ruta: ${rutaId}`;$('#tTipo').textContent=`Corte del día ${dateStr}`;const tLineas=$('#tLineas');tLineas.innerHTML='';const mk=(l,r)=>{const d=document.createElement('div');d.className='t-row';d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`;return d;};tLineas.appendChild(mk('EFECTIVO',desg.efectivo));tLineas.appendChild(mk('TARJETA',desg.tarjeta));tLineas.appendChild(mk('TRANSFER',desg.transferencia));tLineas.appendChild(mk('MIXTO',desg.mixto));$('#tSubtotal').textContent=money(total);$('#tImpuestos').textContent=money(0);$('#tTotal').textContent=money(total);$('#tMetodo').textContent='—';$('#tRecibidoRow').style.display='none';$('#tNotas').textContent='Fin de día';window.print();await setDoc(doc(db,'rutas_venta',rutaId,'cortes',dateStr),{fecha_dia:dateStr,total,tickets:conteo,desglose:desg,atendio:ATENDIO,creado:serverTimestamp()});}
+  async function corteDelDia(){await generarCorteParaDia(toYYYYMMDD(new Date()));}
 
-  async function confirmarCobro(){
-    try{
-      const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
-      const clienteTxt=elCliente.value||'Mostrador';
-      const metodo=metodoPago.value;
-      const recibido=parseFloat(montoRecibido.value||'0');
-      if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){alert('Pago insuficiente'); return;}
-      const cambio=Math.max(0,recibido-total); const notas=(notasCobro.value||'').trim();
-      const folio=await getNextFolio(db); const fecha=new Date(); const fechaTxt=fecha.toLocaleString(); const fecha_dia=toYYYYMMDD(fecha);
-      const venta={folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-        atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-        cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,subtotal,impuestos,total,notas,
-        detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))};
-      const docId=await guardarVentaEnFirestore(venta);
-      rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}); window.print();
-      carrito=[]; render(); cerrarCobro();
-    }catch(err){console.error(err); alert('Error guardando venta');}
-  }
+  $('#btnCobrar').onclick=abrirCobro;$('#btnCancelarCobro').onclick=cerrarCobro;$('#btnConfirmarCobro').onclick=confirmarCobro;$('#btnCorte').onclick=corteDelDia;
 
-  // ===== Corte del día =====
-  async function calcularResumenDeDia(dateStr){
-    const [Y,M,D]=dateStr.split('-').map(Number);
-    const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
-    const tsStart=Timestamp.fromDate(start), tsEnd=Timestamp.fromDate(end);
-    const ventasRef=collection(db,'rutas_venta',rutaId,'ventas');
-    const qv=query(ventasRef,where('fecha','>=',tsStart),where('fecha','<',tsEnd),orderBy('fecha','asc'));
-    const snap=await getDocs(qv);
-    let total=0,conteo=0; const desg={efectivo:0,tarjeta:0,transferencia:0,mixto:0};
-    snap.forEach(s=>{const v=s.data(),t=Number(v.total||0); total+=t; conteo++; const m=(v.metodo_pago||'').toLowerCase(); if(m==='efectivo')desg.efectivo+=t; else if(m==='tarjeta')desg.tarjeta+=t; else if(m==='transferencia')desg.transferencia+=t; else if(m==='mixto')desg.mixto+=t;});
-    return {total,conteo,desg};
-  }
-  async function generarCorteParaDia(dateStr){
-    const {total,conteo,desg}=await calcularResumenDeDia(dateStr);
-    if(conteo===0){alert('No hay ventas en '+dateStr); return;}
-    const folioCorte=`C-${dateStr.replaceAll('-','')}`, fechaTxt=new Date().toLocaleString();
-    document.getElementById('tFolio').textContent=`CORTE: ${folioCorte}`;
-    document.getElementById('tFecha').textContent=fechaTxt;
-    document.getElementById('tAtendio').textContent=ATENDIO;
-    document.getElementById('tCliente').textContent=`Ruta: ${rutaId}`;
-    document.getElementById('tTipo').textContent=`Corte del día ${dateStr}`;
-    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
-    const mk=(l,r)=>{const d=document.createElement('div'); d.className='t-row'; d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`; return d;};
-    tLineas.appendChild(mk('EFECTIVO',desg.efectivo)); tLineas.appendChild(mk('TARJETA',desg.tarjeta)); tLineas.appendChild(mk('TRANSFER',desg.transferencia)); tLineas.appendChild(mk('MIXTO',desg.mixto));
-    document.getElementById('tSubtotal').textContent=money(total); document.getElementById('tImpuestos').textContent=money(0); document.getElementById('tTotal').textContent=money(total);
-    document.getElementById('tMetodo').textContent='—'; document.getElementById('tRecibidoRow').style.display='none'; document.getElementById('tNotas').textContent='Fin de día';
-    window.print(); const corteRef=doc(db,'rutas_venta',rutaId,'cortes',dateStr); await setDoc(corteRef,{fecha_dia:dateStr,total,tickets:conteo,desglose:desg,atendio:ATENDIO,creado:serverTimestamp()});
-  }
-  async function corteDelDia(){const hoy=toYYYYMMDD(new Date()); await generarCorteParaDia(hoy);}
-
-  // ===== Botones =====
-  document.getElementById('btnCobrar').onclick=abrirCobro;
-  document.getElementById('btnCancelarCobro').onclick=cerrarCobro;
-  document.getElementById('btnConfirmarCobro').onclick=confirmarCobro;
-  document.getElementById('btnCorte').onclick=corteDelDia;
-
-  await cargarCatalogoDesdeFirestore(); await cargarClientes(); render();
+  await cargarCatalogoDesdeFirestore();await cargarClientes();render();
 </script>
 </body>
 </html>
