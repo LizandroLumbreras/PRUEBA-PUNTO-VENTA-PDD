@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>POS – Ruta de Venta</title>
+  <link rel="icon" href="logo_proveedora.webp">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
     :root{
@@ -138,7 +139,7 @@
   <!-- Ticket -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
-      <div class="t-header"><img src="logo_proveedora.webp"></div>
+      <div class="t-header"><img src="logo_proveedora.webp" alt=""></div>
       <div class="t-header t-strong">La Proveedora</div>
       <div class="t-header t-strong">Ruta de Venta</div>
       <hr>
@@ -158,17 +159,21 @@
   </div>
 
   <!-- Overlay con logo -->
-  <div id="overlayLogo"><img id="logoFlotante" src="logo_proveedora.webp" width="180"></div>
+  <div id="overlayLogo"><img id="logoFlotante" src="logo_proveedora.webp" width="180" alt=""></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getFirestore, collection, getDocs, query, where, orderBy, doc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "TU_APIKEY",
+  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
   authDomain: "inventariopv-643f1.firebaseapp.com",
   projectId: "inventariopv-643f1",
+  storageBucket: "inventariopv-643f1.firebasestorage.app",
+  messagingSenderId: "96242533231",
+  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
 };
+
 const app = initializeApp(firebaseConfig);
 const db  = getFirestore(app);
 
@@ -176,6 +181,13 @@ const ATENDIO='Juan Serrato', rutaId='ruta_1';
 const $=s=>document.querySelector(s);
 const toYYYYMMDD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const money=n=>'$'+(Number(n)||0).toFixed(2);
+
+// === Catálogo global + util de normalización ===
+let CATALOGO = [];
+const normaliza = s => (s||'')
+  .toString()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase().trim();
 
 /* ===== Clientes ===== */
 async function cargarClientes(){
@@ -194,13 +206,89 @@ async function cargarClientes(){
 /* ===== Productos ===== */
 async function cargarCatalogo(){
   const snap=await getDocs(collection(db,"productos"));
-  let productos=[];
+  CATALOGO = [];
   snap.forEach(d=>{
     const x=d.data();
-    productos.push({id:d.id, nombre:x.concepto||"SIN NOMBRE", codigo:x.codigoBarra||""});
+    CATALOGO.push({
+      id:d.id,
+      nombre:x.concepto || "SIN NOMBRE",
+      codigo:(x.codigoBarra || x.codigo || "").toString()
+    });
   });
-  console.log("Productos cargados:", productos.length);
+  console.log("Productos cargados:", CATALOGO.length);
 }
+
+/* ===== Buscador ===== */
+const $buscador  = document.getElementById('buscador');
+const $resultados = document.getElementById('resultados');
+
+function renderResultados(items){
+  if(!items || items.length===0){
+    $resultados.style.display = 'none';
+    $resultados.innerHTML = '';
+    return;
+  }
+  $resultados.innerHTML = items.slice(0,50).map(p=>`
+    <div class="result-item" data-id="${p.id}">
+      <div>
+        <div>${p.nombre}</div>
+        <small>${p.codigo||''}</small>
+      </div>
+    </div>
+  `).join('');
+  $resultados.style.display = 'block';
+}
+
+function filtrarCatalogo(q){
+  const qn = normaliza(q);
+  if(!qn) return [];
+  return CATALOGO.filter(p=>{
+    const n = normaliza(p.nombre);
+    const c = normaliza(p.codigo);
+    return n.includes(qn) || c.includes(qn);
+  });
+}
+
+let tSearch;
+$buscador.addEventListener('input', e=>{
+  clearTimeout(tSearch);
+  const val = e.target.value;
+  tSearch = setTimeout(()=>{
+    const res = filtrarCatalogo(val);
+    renderResultados(res);
+  }, 120);
+});
+
+$resultados.addEventListener('click', e=>{
+  const item = e.target.closest('.result-item');
+  if(!item) return;
+  const id = item.getAttribute('data-id');
+  const prod = CATALOGO.find(p=>p.id===id);
+  if(!prod) return;
+
+  $buscador.value = `${prod.codigo} - ${prod.nombre}`;
+  $resultados.style.display = 'none';
+  console.log('Seleccionado:', prod);
+  // TODO: aquí puedes agregar al carrito / línea de venta
+});
+
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.searchbox')) $resultados.style.display = 'none';
+});
+
+// Enter = toma el primer resultado
+$buscador.addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const res = filtrarCatalogo($buscador.value);
+    if(res.length){
+      const p = res[0];
+      $buscador.value = `${p.codigo} - ${p.nombre}`;
+      $resultados.style.display = 'none';
+      console.log('Seleccionado (Enter):', p);
+      e.preventDefault();
+    }
+  }
+});
 
 /* ===== Corte ===== */
 async function calcularResumenDeDia(dateStr){
@@ -253,8 +341,11 @@ async function corteDelDia(){
   },5000);
 }
 
-/* Inicialización */
+/* ===== Inicialización ===== */
 document.getElementById("btnCorte").onclick=corteDelDia;
+// (Opcional) placeholder de Cobrar:
+document.getElementById("btnCobrar").onclick=()=>alert("Cobrar: integra aquí tu flujo de ticket/carrito.");
+
 await cargarClientes();
 await cargarCatalogo();
 </script>
