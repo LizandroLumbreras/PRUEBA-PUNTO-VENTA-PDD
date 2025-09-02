@@ -292,40 +292,86 @@ $buscador.addEventListener('keydown', e=>{
 
 /* ===== Corte ===== */
 async function calcularResumenDeDia(dateStr){
-  const [Y,M,D]=dateStr.split('-').map(Number);
-  const start=new Date(Y,M-1,D,0,0,0), end=new Date(Y,M-1,D,23,59,59);
-  const tsStart=Timestamp.fromDate(start), tsEnd=Timestamp.fromDate(end);
-  const qv=query(collection(db,'rutas_venta',rutaId,'ventas'),
-                 where('fecha','>=',tsStart),
-                 where('fecha','<',tsEnd),
-                 orderBy('fecha','asc'));
-  const snap=await getDocs(qv);
-  let total=0;
-  snap.forEach(s=> total += Number(s.data().total||0));
-  return {total,conteo:snap.size};
+  const [Y,M,D] = dateStr.split('-').map(Number);
+  const start = new Date(Y,M-1,D,0,0,0), end = new Date(Y,M-1,D,23,59,59);
+  const tsStart = Timestamp.fromDate(start), tsEnd = Timestamp.fromDate(end);
+
+  const qv = query(
+    collection(db,'rutas_venta',rutaId,'ventas'),
+    where('fecha','>=',tsStart),
+    where('fecha','<',tsEnd),
+    orderBy('fecha','asc')
+  );
+
+  const snap = await getDocs(qv);
+
+  let total = 0, totalFactura = 0, totalNoFactura = 0;
+  let conFactura = 0, sinFactura = 0;
+
+  snap.forEach(s => {
+    const data = s.data();
+    const monto = Number(data.total || 0);
+    total += monto;
+
+    if (data.ocupa_factura === true) {
+      totalFactura += monto;
+      conFactura++;
+    } else {
+      totalNoFactura += monto;
+      sinFactura++;
+    }
+  });
+
+  return {
+    total,
+    conteo: snap.size,
+    conFactura,
+    sinFactura,
+    totalFactura,
+    totalNoFactura
+  };
 }
 
 async function guardarCorte(dateStr){
-  const {total,conteo}=await calcularResumenDeDia(dateStr);
-  if(conteo===0){ alert("No hay ventas en "+dateStr); return false; }
+  const {total,conteo,conFactura,sinFactura,totalFactura,totalNoFactura} = await calcularResumenDeDia(dateStr);
+  if(conteo===0){ 
+    alert("No hay ventas en "+dateStr); 
+    return false; 
+  }
   await setDoc(doc(db,'rutas_venta',rutaId,'cortes',dateStr),{
-    fecha_dia:dateStr,total,tickets:conteo,atendio:ATENDIO,creado:serverTimestamp()
+    fecha_dia:dateStr,
+    total,
+    tickets:conteo,
+    atendio:ATENDIO,
+    conFactura,
+    sinFactura,
+    totalFactura,
+    totalNoFactura,
+    creado:serverTimestamp()
   });
   return true;
 }
 
+
 async function imprimirCorte(dateStr){
-  const {total,conteo}=await calcularResumenDeDia(dateStr);
+  const {total,conteo,conFactura,sinFactura,totalFactura,totalNoFactura} = await calcularResumenDeDia(dateStr);
   if(conteo===0)return;
+
   $('#tFolio').textContent="CORTE "+dateStr;
   $('#tFecha').textContent=new Date().toLocaleString();
   $('#tAtendio').textContent=ATENDIO;
   $('#tCliente').textContent="Ruta: "+rutaId;
+
+  $('#tLineas').innerHTML = `
+    <div>Con factura: ${conFactura} tickets = ${money(totalFactura)}</div>
+    <div>Sin factura: ${sinFactura} tickets = ${money(totalNoFactura)}</div>
+  `;
+
   $('#tTotal').textContent=money(total);
   $('#tNotas').textContent="Fin de día";
+
   window.print();
 }
-
 async function corteDelDia(){
   const seguro=confirm("¿Está seguro de realizar el corte del día?");
   if(!seguro)return;
