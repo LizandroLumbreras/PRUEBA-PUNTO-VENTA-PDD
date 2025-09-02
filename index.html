@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>POS – Ruta de Venta</title>
-  <link rel="icon" href="logo_proveedora.webp">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet"/>
   <style>
     :root{
@@ -16,7 +15,7 @@
     html,body{height:100%}
     body{
       margin:0; font-family:'Poppins',system-ui,Arial; color:#111; background:var(--bg-grad);
-      display:flex; flex-direction:column;
+      display:flex; flex-direction:column; -webkit-font-smoothing:antialiased; -webkit-tap-highlight-color:transparent;
     }
 
     header{
@@ -32,14 +31,16 @@
     header img{ height:75px; object-fit:contain; }
 
     .wrap{flex:1; padding:12px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto}
+
     .controls{ display:flex; flex-direction:column; gap:10px; }
     .field{
       display:flex; gap:8px; background:rgba(255,255,255,.12); padding:10px; border-radius:var(--radius-sm);
-      align-items:center;
+      align-items:center; backdrop-filter:blur(2px);
     }
     .field label{min-width:78px; color:#fff; font-size:13px}
     .field input{ flex:1; padding:10px 12px; border:none; border-radius:8px; font-size:15px; background:#fff; outline:none; }
 
+    /* Buscador */
     .searchbox{ position:relative; z-index:300; }
     .search-results{
       position:absolute; left:90px; right:10px; top:calc(100% + 6px);
@@ -51,6 +52,8 @@
     .result-item:hover{ background:#f2f4f7 }
 
     .card{ background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+
+    /* Tabla */
     .table-wrap{ max-height:260px; overflow:auto; }
     table{ width:100%; border-collapse:collapse; table-layout:fixed; }
     thead th{ background:var(--azul); color:#fff; padding:10px; font-size:13px; position:sticky; top:0; z-index:100; }
@@ -59,7 +62,10 @@
     thead th:nth-child(3){ width:20%; text-align:right; }
     thead th:nth-child(4){ width:10%; text-align:center; }
     td.del-col{ text-align:center; }
-    td.del-col .del{background:#e74c3c; color:#fff; border:none; border-radius:50%; width:22px; height:22px; font-size:14px; line-height:20px; cursor:pointer;}
+    td.del-col .del{
+      background:#e74c3c; color:#fff; border:none; border-radius:50%;
+      width:22px; height:22px; font-size:14px; line-height:20px; cursor:pointer;
+    }
     td.del-col .del:hover{ background:#c0392b; }
 
     .totals{ display:flex; flex-direction:column; gap:6px; padding:12px 14px; background:#fff; }
@@ -72,37 +78,41 @@
       width:100%; border:none; padding:14px; border-radius:12px; font-size:18px; font-weight:700; color:#fff;
       background:linear-gradient(180deg,var(--resalte),#094d85); box-shadow:var(--shadow); cursor:pointer;
     }
+    .btn:active{ transform:translateY(1px) }
     #btnCorte{ background:linear-gradient(180deg,#1e8e3e,#146329); margin-top:10px; }
 
+    /* Modal Cobro */
+    #modalCobro{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1200; align-items:center; justify-content:center; }
+    .modal-card{ width:min(520px,92vw); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden; }
+    .modal-h{ padding:12px 16px; background:#0c6cbd; color:#fff; font-weight:700; }
+    .modal-b{ padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+    .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
+    body.modal-open{ overflow:hidden; }
+
+    /* ===== IMPRESIÓN DEL TICKET ===== */
     #ticketArea{ display:none; }
     @media print{
       :root{ --ticket-mm:72; --ticket-pad-mm:1; --ticket-font:18px; --line-height:1.08; }
       @page{ size: calc(var(--ticket-mm) * 1mm) auto; margin:0; }
-      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; }
+      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
       body *{ visibility:hidden!important; }
       #ticketArea, #ticketArea *{ visibility:visible!important; }
-      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; }
-      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; }
-    }
-
-    /* === LOGO FLOTANTE CON FONDO === */
-    #overlayLogo {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 5000;
-    }
-    #logoFlotante {
-      transform: scale(0.8);
-      opacity: 0;
-      transition: all 0.4s ease-in-out;
-    }
-    #overlayLogo.mostrar #logoFlotante {
-      opacity: 1;
-      transform: scale(1);
+      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; padding:0; margin:0; z-index:99999; }
+      #tTipoRow{ display:none !important; }
+      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; padding:0 calc(var(--ticket-pad-mm) * 1mm); box-sizing:border-box; font:var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif; color:#000; text-align:left; overflow:hidden; }
+      .ticket .t-header{ text-align:center; margin:2px 0; }
+      .ticket img{ display:inline-block; max-width:100%; height:auto; }
+      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
+      .ticket .t-row{ display:flex!important; justify-content:space-between; align-items:center; gap:6px; white-space:nowrap!important; margin:2px 0; }
+      .ticket .t-desc{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap!important; text-align:left; }
+      .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap!important; }
+      .ticket .t-totals{ text-align:right; }
+      .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
+      .ticket .t-thanks{ text-align:center; margin-top:8px; }
+      .ticket .t-strong{ font-size: calc(var(--ticket-font) + 2px); }
+      .ticket .t-header img{ max-width:142px!important; }
+      .ticket .t-header.biz{ font-size: calc(var(--ticket-font) - 3px); }
+      .ticket .t-core,.ticket .t-core *{ font-size: calc(var(--ticket-font) - 3px); }
     }
   </style>
 </head>
@@ -130,270 +140,336 @@
       </div>
     </section>
 
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cant.</th>
+              <th>Importe</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div class="totals">
+        <div class="row muted"><span>Subtotal</span><span id="lblSubtotal">$0.00</span></div>
+        <div class="row muted"><span>Impuestos</span><span id="lblImpuestos">$0.00</span></div>
+        <div class="row big"><span>Total</span><span id="lblTotal">$0.00</span></div>
+      </div>
+    </section>
+
     <section class="actions">
       <button class="btn" id="btnCobrar">Cobrar</button>
       <button class="btn" id="btnCorte">Corte del día</button>
     </section>
   </main>
 
-  <!-- Ticket -->
+  <!-- Modal de Cobro -->
+  <div id="modalCobro">
+    <div class="modal-card">
+      <div class="modal-h">Cobro</div>
+      <div class="modal-b">
+        <div class="row big" style="justify-content:space-between">
+          <span>Total a pagar:</span>
+          <span id="cobroTotal">$0.00</span>
+        </div>
+
+        <label for="metodoPago">Método de pago</label>
+        <select id="metodoPago">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="transferencia">Transferencia</option>
+          <option value="mixto">Mixto</option>
+        </select>
+
+        <div id="bloqueEfectivo">
+          <label for="montoRecibido">Monto recibido</label>
+          <input id="montoRecibido" type="number" step="0.01" min="0">
+          <div class="row" style="justify-content:space-between">
+            <span>Cambio:</span>
+            <span id="montoCambio">$0.00</span>
+          </div>
+        </div>
+
+        <label for="notasCobro">Notas</label>
+        <textarea id="notasCobro" rows="2" style="resize:none"></textarea>
+
+        <div style="display:flex; gap:10px; margin-top:10px;">
+          <button class="btn" id="btnCancelarCobro" style="background:#aaa;">Cancelar</button>
+          <button class="btn" id="btnConfirmarCobro">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ticket imprimible -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
-      <div class="t-header"><img src="logo_proveedora.webp" alt=""></div>
+      <div class="t-header"><img src="logo_proveedora.webp" alt="Logo"></div>
       <div class="t-header t-strong">La Proveedora</div>
       <div class="t-header t-strong">Ruta de Venta</div>
+      <hr>
+      <div class="t-header biz">MADERO 690 SUR, CENTRO</div>
+      <div class="t-header biz">LINARES, NUEVO LEÓN, 67700</div>
+      <div class="t-header biz">RFC: PDD-031204-KL5</div>
+      <div class="t-header biz">TEL: (821) 2121805</div>
+      <div class="t-header biz">RÉGIMEN GENERAL DE LEY</div>
+      <div class="t-header biz">PERSONAS MORALES</div>
       <hr>
       <div class="t-header t-core" id="tFolio"></div>
       <div class="t-header t-core" id="tFecha"></div>
       <div class="t-header t-core">Atendió: <span id="tAtendio"></span></div>
       <hr>
       <div class="t-core" id="tCliente"></div>
+      <div class="t-core" id="tTipoRow">Tipo precio: <span id="tTipo"></span></div>
+      <hr>
       <div class="t-core" id="tLineas"></div>
       <hr>
       <div class="t-totals t-core">
-        <div class="row"><span>Total</span><span id="tTotal"></span></div>
+        <div class="row"><span>Subtotal</span><span id="tSubtotal"></span></div>
+        <div class="row"><span>Impuestos</span><span id="tImpuestos"></span></div>
+        <div class="row" style="font-weight:700;"><span>Total</span><span id="tTotal"></span></div>
       </div>
+      <hr>
+      <div class="t-core">Método: <span id="tMetodo"></span></div>
+      <div class="t-core" id="tRecibidoRow">Pago: <span id="tRecibido"></span> · Cambio: <span id="tCambio"></span></div>
       <div id="tNotas"></div>
       <div class="t-thanks">¡Gracias por su compra!</div>
     </div>
   </div>
 
-  <!-- Overlay con logo -->
-  <div id="overlayLogo"><img id="logoFlotante" src="logo_proveedora.webp" width="180" alt=""></div>
-
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, getDocs, query, where, orderBy, doc, setDoc, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
+           getDocs, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-  authDomain: "inventariopv-643f1.firebaseapp.com",
-  projectId: "inventariopv-643f1",
-  storageBucket: "inventariopv-643f1.firebasestorage.app",
-  messagingSenderId: "96242533231",
-  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
-const ATENDIO='Juan Serrato', rutaId='ruta_1';
-const $=s=>document.querySelector(s);
-const toYYYYMMDD=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const money=n=>'$'+(Number(n)||0).toFixed(2);
-
-// === Catálogo global + util de normalización ===
-let CATALOGO = [];
-const normaliza = s => (s||'')
-  .toString()
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-  .toLowerCase().trim();
-
-/* ===== Clientes ===== */
-async function cargarClientes(){
-  const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
-  const dl=document.getElementById("clientesList");
-  dl.innerHTML="";
-  snap.forEach(d=>{
-    const c=d.data();
-    const opt=document.createElement("option");
-    opt.value=c.nombre||"";
-    dl.appendChild(opt);
-  });
-  console.log("Clientes cargados:", snap.size);
-}
-
-/* ===== Productos ===== */
-async function cargarCatalogo(){
-  const snap=await getDocs(collection(db,"productos"));
-  CATALOGO = [];
-  snap.forEach(d=>{
-    const x=d.data();
-    CATALOGO.push({
-      id:d.id,
-      nombre:x.concepto || "SIN NOMBRE",
-      codigo:(x.codigoBarra || x.codigo || "").toString()
-    });
-  });
-  console.log("Productos cargados:", CATALOGO.length);
-}
-
-/* ===== Buscador ===== */
-const $buscador  = document.getElementById('buscador');
-const $resultados = document.getElementById('resultados');
-
-function renderResultados(items){
-  if(!items || items.length===0){
-    $resultados.style.display = 'none';
-    $resultados.innerHTML = '';
-    return;
-  }
-  $resultados.innerHTML = items.slice(0,50).map(p=>`
-    <div class="result-item" data-id="${p.id}">
-      <div>
-        <div>${p.nombre}</div>
-        <small>${p.codigo||''}</small>
-      </div>
-    </div>
-  `).join('');
-  $resultados.style.display = 'block';
-}
-
-function filtrarCatalogo(q){
-  const qn = normaliza(q);
-  if(!qn) return [];
-  return CATALOGO.filter(p=>{
-    const n = normaliza(p.nombre);
-    const c = normaliza(p.codigo);
-    return n.includes(qn) || c.includes(qn);
-  });
-}
-
-let tSearch;
-$buscador.addEventListener('input', e=>{
-  clearTimeout(tSearch);
-  const val = e.target.value;
-  tSearch = setTimeout(()=>{
-    const res = filtrarCatalogo(val);
-    renderResultados(res);
-  }, 120);
-});
-
-$resultados.addEventListener('click', e=>{
-  const item = e.target.closest('.result-item');
-  if(!item) return;
-  const id = item.getAttribute('data-id');
-  const prod = CATALOGO.find(p=>p.id===id);
-  if(!prod) return;
-
-  $buscador.value = `${prod.codigo} - ${prod.nombre}`;
-  $resultados.style.display = 'none';
-  console.log('Seleccionado:', prod);
-  // TODO: aquí puedes agregar al carrito / línea de venta
-});
-
-document.addEventListener('click', (e)=>{
-  if(!e.target.closest('.searchbox')) $resultados.style.display = 'none';
-});
-
-// Enter = toma el primer resultado
-$buscador.addEventListener('keydown', e=>{
-  if(e.key==='Enter'){
-    const res = filtrarCatalogo($buscador.value);
-    if(res.length){
-      const p = res[0];
-      $buscador.value = `${p.codigo} - ${p.nombre}`;
-      $resultados.style.display = 'none';
-      console.log('Seleccionado (Enter):', p);
-      e.preventDefault();
-    }
-  }
-});
-
-/* ===== Corte ===== */
-async function calcularResumenDeDia(dateStr){
-  const [Y,M,D] = dateStr.split('-').map(Number);
-  const start = new Date(Y,M-1,D,0,0,0), end = new Date(Y,M-1,D,23,59,59);
-  const tsStart = Timestamp.fromDate(start), tsEnd = Timestamp.fromDate(end);
-
-  const qv = query(
-    collection(db,'rutas_venta',rutaId,'ventas'),
-    where('fecha','>=',tsStart),
-    where('fecha','<',tsEnd),
-    orderBy('fecha','asc')
-  );
-
-  const snap = await getDocs(qv);
-
-  let total = 0, totalFactura = 0, totalNoFactura = 0;
-  let conFactura = 0, sinFactura = 0;
-
-  snap.forEach(s => {
-    const data = s.data();
-    const monto = Number(data.total || 0);
-    total += monto;
-
-    if (data.ocupa_factura === true) {
-      totalFactura += monto;
-      conFactura++;
-    } else {
-      totalNoFactura += monto;
-      sinFactura++;
-    }
-  });
-
-  return {
-    total,
-    conteo: snap.size,
-    conFactura,
-    sinFactura,
-    totalFactura,
-    totalNoFactura
+  const firebaseConfig = {
+    apiKey: "TU_APIKEY",
+    authDomain: "inventariopv-643f1.firebaseapp.com",
+    projectId: "inventariopv-643f1",
+    storageBucket: "inventariopv-643f1.appspot.com",
+    messagingSenderId: "96242533231",
+    appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
   };
-}
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
 
-async function guardarCorte(dateStr){
-  const {total,conteo,conFactura,sinFactura,totalFactura,totalNoFactura} = await calcularResumenDeDia(dateStr);
-  if(conteo===0){ 
-    alert("No hay ventas en "+dateStr); 
-    return false; 
+  const $ = (s)=>document.querySelector(s);
+  const elCliente=$('#cliente'), elBuscador=$('#buscador'), elCant=$('#cantidadInput');
+  const elResultados=$('#resultados'), elTbody=$('#tbody');
+  const lblSubtotal=$('#lblSubtotal'), lblTotal=$('#lblTotal'), lblImp=$('#lblImpuestos');
+
+  const ATENDIO='Juan Serrato', rutaId='ruta_1';
+  const money=(n)=>'$'+(Number(n)||0).toFixed(2);
+  const pad2=n=>String(n).padStart(2,'0');
+  const toYYYYMMDD=(date)=>{const d=new Date(date); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;};
+
+  let carrito=[], prodSeleccionado=null, clienteSeleccionado=null;
+  let catalogo=[], clientes=[]; const codeIndex=new Map();
+  const normaliza=s=>(s||'').toString().trim().toLowerCase();
+
+  // ===== Catálogo =====
+  async function cargarCatalogoDesdeFirestore(){
+    catalogo=[]; codeIndex.clear();
+    const prodSnap=await getDocs(collection(db,'productos'));
+    prodSnap.forEach(d=>{
+      const x=d.data(); if(x.activo===false)return;
+      const prod={id:d.id, nombre:x.concepto||'SIN NOMBRE',
+        codigo:(x.codigoBarra||'').toString(),
+        precioPublico:Number(x.precioPublico||0),
+        ivaTasa:Number(x.ivaTasa||0),
+        iepsTasa:Number(x.iepsTasa||0)};
+      catalogo.push(prod); if(prod.codigo)codeIndex.set(prod.codigo.trim(),prod.id);
+    });
   }
-  await setDoc(doc(db,'rutas_venta',rutaId,'cortes',dateStr),{
-    fecha_dia:dateStr,
-    total,
-    tickets:conteo,
-    atendio:ATENDIO,
-    conFactura,
-    sinFactura,
-    totalFactura,
-    totalNoFactura,
-    creado:serverTimestamp()
-  });
-  return true;
-}
 
+  // ===== Clientes =====
+  async function cargarClientes(){
+    clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
+    const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
+    snap.forEach(d=>{
+      const c=d.data(); if(c.activo===false)return;
+      const cli={id:d.id,nombre:c.nombre||"",alias:c.alias||"",
+        telefono:c.telefono||"",ciudad:c.ciudad||"",rfc:c.rfc||"",
+        ocupa_factura:!!c.ocupa_factura,uso_cfdi:c.uso_cfdi||""};
+      clientes.push(cli);
+      const opt=document.createElement("option");
+      opt.value=cli.nombre;
+      opt.label=cli.alias?`${cli.nombre} (${cli.alias})`:cli.nombre;
+      dl.appendChild(opt);
+    });
+  }
+  elCliente.addEventListener("change",()=>{const v=normaliza(elCliente.value); clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;});
 
-async function imprimirCorte(dateStr){
-  const {total,conteo,conFactura,sinFactura,totalFactura,totalNoFactura} = await calcularResumenDeDia(dateStr);
-  if(conteo===0)return;
+  const priceOf=p=>Number(p.precioPublico||0);
 
-  $('#tFolio').textContent="CORTE "+dateStr;
-  $('#tFecha').textContent=new Date().toLocaleString();
-  $('#tAtendio').textContent=ATENDIO;
-  $('#tCliente').textContent="Ruta: "+rutaId;
+  // ===== Totales =====
+  function calcularTotalesConImpuestosIncluidos(){
+    let total=0, impuestos=0;
+    carrito.forEach(it=>{
+      const imp=it.cantidad*it.precioUnit;
+      total+=imp;
+      if(it.ivaTasa>0)impuestos+=(imp*it.ivaTasa)/(1+it.ivaTasa);
+      if(it.iepsTasa>0)impuestos+=(imp*it.iepsTasa)/(1+it.iepsTasa);
+    });
+    const subtotal=total-impuestos;
+    return {subtotal:+subtotal.toFixed(2),impuestos:+impuestos.toFixed(2),total:+total.toFixed(2)};
+  }
 
-  $('#tLineas').innerHTML = `
-    <div>Con factura: ${conFactura} tickets = ${money(totalFactura)}</div>
-    <div>Sin factura: ${sinFactura} tickets = ${money(totalNoFactura)}</div>
-  `;
+  // ===== Render =====
+  function render(){
+    elTbody.innerHTML="";
+    carrito.forEach(it=>{
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td>${it.nombre}</td><td>${it.cantidad.toFixed(2)}</td><td>${money(it.importe)}</td>
+        <td class="del-col"><button class="del">✕</button></td>`;
+      tr.querySelector('.del').onclick=()=>delItem(it.id);
+      elTbody.appendChild(tr);
+    });
+    const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
+    lblSubtotal.textContent=money(subtotal);
+    lblImp.textContent=money(impuestos);
+    lblTotal.textContent=money(total);
+  }
 
-  $('#tTotal').textContent=money(total);
-  $('#tNotas').textContent="Fin de día";
+  function delItem(id){ carrito=carrito.filter(x=>x.id!==id); render(); }
+  function addProduct(prod,cantidad=1){
+    if(!prod)return;
+    const cant=Math.max(0.01,Number(cantidad)||1);
+    const precio=priceOf(prod);
+    const ex=carrito.find(x=>x.id===prod.id);
+    if(ex){ex.cantidad+=cant; ex.importe=ex.cantidad*precio;}
+    else{carrito.push({...prod,cantidad:cant,precioUnit:precio,importe:cant*precio});}
+    render();
+  }
 
-  window.print();
-}
-async function corteDelDia(){
-  const seguro=confirm("¿Está seguro de realizar el corte del día?");
-  if(!seguro)return;
-  const overlay=$("#overlayLogo");
-  overlay.style.display="flex";
-  overlay.classList.add("mostrar");
-  const hoy=toYYYYMMDD(new Date());
-  const guardado=await guardarCorte(hoy);
-  setTimeout(async()=>{
-    overlay.classList.remove("mostrar");
-    overlay.style.display="none";
-    if(guardado) await imprimirCorte(hoy);
-  },5000);
-}
+  // ===== Buscador =====
+  function buscarLocal(qraw){
+    const q=(qraw||"").trim(); if(!q)return[];
+    const idByCode=codeIndex.get(q); if(idByCode){const p=catalogo.find(x=>x.id===idByCode); if(p)return[p];}
+    const nq=normaliza(q); return catalogo.filter(p=>normaliza(p.nombre).includes(nq));
+  }
+  function pintarResultados(hits){
+    elResultados.innerHTML=""; if(hits.length===0){elResultados.style.display="none";return;}
+    elResultados.style.display="block";
+    hits.forEach(p=>{
+      const div=document.createElement("div");
+      div.className="result-item"; div.innerHTML=`<span>${p.nombre}</span><span><small>${p.codigo}</small> ${money(priceOf(p))}</span>`;
+      div.onclick=()=>{prodSeleccionado=p; elBuscador.value=p.nombre; elResultados.style.display="none"; elCant.focus(); elCant.select();};
+      elResultados.appendChild(div);
+    });
+  }
+  elBuscador.addEventListener('input',()=>pintarResultados(buscarLocal(elBuscador.value)));
+  elBuscador.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){const hits=buscarLocal(elBuscador.value.trim()); if(hits.length>=1){prodSeleccionado=hits[0]; elResultados.style.display="none"; elBuscador.value=hits[0].nombre; elCant.focus(); elCant.select();}}});
+  elCant.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){if(!clienteSeleccionado){alert('Selecciona un cliente primero.');elCliente.focus();return;} if(!prodSeleccionado){alert('Selecciona un producto.');elBuscador.focus();return;} const cant=parseFloat(elCant.value||''); if(isNaN(cant)||cant<=0){alert('Ingresa cantidad válida.');elCant.focus();return;} addProduct(prodSeleccionado,cant); prodSeleccionado=null; elBuscador.value=''; elCant.value='1'; elBuscador.focus();}});
 
-/* ===== Inicialización ===== */
-document.getElementById("btnCorte").onclick=corteDelDia;
-// (Opcional) placeholder de Cobrar:
-document.getElementById("btnCobrar").onclick=()=>alert("Cobrar: integra aquí tu flujo de ticket/carrito.");
+  // ===== Cobro =====
+  const modalCobro=document.getElementById('modalCobro');
+  const cobroTotal=document.getElementById('cobroTotal');
+  const metodoPago=document.getElementById('metodoPago');
+  const bloqueEfectivo=document.getElementById('bloqueEfectivo');
+  const montoRecibido=document.getElementById('montoRecibido');
+  const montoCambio=document.getElementById('montoCambio');
+  const notasCobro=document.getElementById('notasCobro');
 
-await cargarClientes();
-await cargarCatalogo();
+  function abrirCobro(){
+    if(carrito.length===0){alert('Agrega productos primero');return;}
+    document.body.classList.add('modal-open');
+    const {total}=calcularTotalesConImpuestosIncluidos();
+    cobroTotal.textContent=money(total);
+    montoRecibido.value=''; montoCambio.textContent=money(0);
+    notasCobro.value=''; metodoPago.value='efectivo'; bloqueEfectivo.style.display='block';
+    modalCobro.style.display='flex';
+  }
+  function cerrarCobro(){modalCobro.style.display='none'; document.body.classList.remove('modal-open');}
+  metodoPago.addEventListener('change',()=>{const isCash=metodoPago.value==='efectivo'||metodoPago.value==='mixto'; bloqueEfectivo.style.display=isCash?'block':'none';});
+  montoRecibido.addEventListener('input',()=>{const {total}=calcularTotalesConImpuestosIncluidos(); const recibidoX=parseFloat(montoRecibido.value||'0'); const cambio=Math.max(0,recibidoX-total); montoCambio.textContent=money(cambio);});
+
+  async function getNextFolio(db){
+    const ref=doc(db,'consecutivos',rutaId);
+    const folio=await runTransaction(db,async(tx)=>{const snap=await tx.get(ref); if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1;} const actual=Number(snap.data().valor||0)+1; tx.update(ref,{valor:actual,actualizado:serverTimestamp()}); return actual;});
+    return `RV-${String(folio).padStart(6,'0')}`;
+  }
+  async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas'); const docRef=await addDoc(col,payload); return docRef.id;}
+
+  function rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}){
+    document.getElementById('tFolio').textContent=`Folio: ${folio}`;
+    document.getElementById('tFecha').textContent=fechaTxt;
+    document.getElementById('tAtendio').textContent=ATENDIO;
+    const partes=[`Cliente: ${clienteTxt}`]; if(clienteSeleccionado){if(clienteSeleccionado.telefono)partes.push(`Tel: ${clienteSeleccionado.telefono}`); if(clienteSeleccionado.ciudad)partes.push(clienteSeleccionado.ciudad);}
+    document.getElementById('tCliente').textContent=partes.join(' · ');
+    document.getElementById('tTipo').textContent="Público";
+    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
+    carrito.forEach(it=>{const fila=document.createElement('div'); fila.className='t-row'; fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`; tLineas.appendChild(fila);});
+    const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
+    document.getElementById('tSubtotal').textContent=money(subtotal);
+    document.getElementById('tImpuestos').textContent=money(impuestos);
+    document.getElementById('tTotal').textContent=money(total);
+    document.getElementById('tMetodo').textContent=metodo.toUpperCase();
+    const rRow=document.getElementById('tRecibidoRow');
+    if(metodo==='efectivo'||metodo==='mixto'){rRow.style.display='block'; document.getElementById('tRecibido').textContent=money(recibido); document.getElementById('tCambio').textContent=money(cambio);} else {rRow.style.display='none';}
+    const notasExtra=[]; if(clienteSeleccionado){notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura?'Sí':'No'}`);} if(notas&&notas.trim())notasExtra.push(`Notas: ${notas.trim()}`); document.getElementById('tNotas').textContent=notasExtra.join(' · ');
+  }
+
+  async function confirmarCobro(){
+    try{
+      const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
+      const clienteTxt=elCliente.value||'Mostrador';
+      const metodo=metodoPago.value;
+      const recibido=parseFloat(montoRecibido.value||'0');
+      if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){alert('Pago insuficiente'); return;}
+      const cambio=Math.max(0,recibido-total); const notas=(notasCobro.value||'').trim();
+      const folio=await getNextFolio(db); const fecha=new Date(); const fechaTxt=fecha.toLocaleString(); const fecha_dia=toYYYYMMDD(fecha);
+      const venta={folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
+        atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
+        cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,subtotal,impuestos,total,notas,
+        detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))};
+      const docId=await guardarVentaEnFirestore(venta);
+      rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}); window.print();
+      carrito=[]; render(); cerrarCobro();
+    }catch(err){console.error(err); alert('Error guardando venta');}
+  }
+
+  // ===== Corte del día =====
+  async function calcularResumenDeDia(dateStr){
+    const [Y,M,D]=dateStr.split('-').map(Number);
+    const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
+    const tsStart=Timestamp.fromDate(start), tsEnd=Timestamp.fromDate(end);
+    const ventasRef=collection(db,'rutas_venta',rutaId,'ventas');
+    const qv=query(ventasRef,where('fecha','>=',tsStart),where('fecha','<',tsEnd),orderBy('fecha','asc'));
+    const snap=await getDocs(qv);
+    let total=0,conteo=0; const desg={efectivo:0,tarjeta:0,transferencia:0,mixto:0};
+    snap.forEach(s=>{const v=s.data(),t=Number(v.total||0); total+=t; conteo++; const m=(v.metodo_pago||'').toLowerCase(); if(m==='efectivo')desg.efectivo+=t; else if(m==='tarjeta')desg.tarjeta+=t; else if(m==='transferencia')desg.transferencia+=t; else if(m==='mixto')desg.mixto+=t;});
+    return {total,conteo,desg};
+  }
+  async function generarCorteParaDia(dateStr){
+    const {total,conteo,desg}=await calcularResumenDeDia(dateStr);
+    if(conteo===0){alert('No hay ventas en '+dateStr); return;}
+    const folioCorte=`C-${dateStr.replaceAll('-','')}`, fechaTxt=new Date().toLocaleString();
+    document.getElementById('tFolio').textContent=`CORTE: ${folioCorte}`;
+    document.getElementById('tFecha').textContent=fechaTxt;
+    document.getElementById('tAtendio').textContent=ATENDIO;
+    document.getElementById('tCliente').textContent=`Ruta: ${rutaId}`;
+    document.getElementById('tTipo').textContent=`Corte del día ${dateStr}`;
+    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
+    const mk=(l,r)=>{const d=document.createElement('div'); d.className='t-row'; d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`; return d;};
+    tLineas.appendChild(mk('EFECTIVO',desg.efectivo)); tLineas.appendChild(mk('TARJETA',desg.tarjeta)); tLineas.appendChild(mk('TRANSFER',desg.transferencia)); tLineas.appendChild(mk('MIXTO',desg.mixto));
+    document.getElementById('tSubtotal').textContent=money(total); document.getElementById('tImpuestos').textContent=money(0); document.getElementById('tTotal').textContent=money(total);
+    document.getElementById('tMetodo').textContent='—'; document.getElementById('tRecibidoRow').style.display='none'; document.getElementById('tNotas').textContent='Fin de día';
+    window.print(); const corteRef=doc(db,'rutas_venta',rutaId,'cortes',dateStr); await setDoc(corteRef,{fecha_dia:dateStr,total,tickets:conteo,desglose:desg,atendio:ATENDIO,creado:serverTimestamp()});
+  }
+  async function corteDelDia(){const hoy=toYYYYMMDD(new Date()); await generarCorteParaDia(hoy);}
+
+  // ===== Botones =====
+  document.getElementById('btnCobrar').onclick=abrirCobro;
+  document.getElementById('btnCancelarCobro').onclick=cerrarCobro;
+  document.getElementById('btnConfirmarCobro').onclick=confirmarCobro;
+  document.getElementById('btnCorte').onclick=corteDelDia;
+
+  await cargarCatalogoDesdeFirestore(); await cargarClientes(); render();
 </script>
 </body>
 </html>
