@@ -522,22 +522,111 @@
     snap.forEach(s=>{const v=s.data(),t=Number(v.total||0); total+=t; conteo++; const m=(v.metodo_pago||'').toLowerCase(); if(m==='efectivo')desg.efectivo+=t; else if(m==='tarjeta')desg.tarjeta+=t; else if(m==='transferencia')desg.transferencia+=t; else if(m==='mixto')desg.mixto+=t;});
     return {total,conteo,desg};
   }
-  async function generarCorteParaDia(dateStr){
-    const {total,conteo,desg}=await calcularResumenDeDia(dateStr);
-    if(conteo===0){alert('No hay ventas en '+dateStr); return;}
-    const folioCorte=`C-${dateStr.replaceAll('-','')}`, fechaTxt=new Date().toLocaleString();
-    document.getElementById('tFolio').textContent=`CORTE: ${folioCorte}`;
-    document.getElementById('tFecha').textContent=fechaTxt;
-    document.getElementById('tAtendio').textContent=ATENDIO;
-    document.getElementById('tCliente').textContent=`Ruta: ${rutaId}`;
-    document.getElementById('tTipo').textContent=`Corte del día ${dateStr}`;
-    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
-    const mk=(l,r)=>{const d=document.createElement('div'); d.className='t-row'; d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`; return d;};
-    tLineas.appendChild(mk('EFECTIVO',desg.efectivo)); tLineas.appendChild(mk('TARJETA',desg.tarjeta)); tLineas.appendChild(mk('TRANSFER',desg.transferencia)); tLineas.appendChild(mk('MIXTO',desg.mixto));
-    document.getElementById('tSubtotal').textContent=money(total); document.getElementById('tImpuestos').textContent=money(0); document.getElementById('tTotal').textContent=money(total);
-    document.getElementById('tMetodo').textContent='—'; document.getElementById('tRecibidoRow').style.display='none'; document.getElementById('tNotas').textContent='Fin de día';
-    window.print(); const corteRef=doc(db,'rutas_venta',rutaId,'cortes',dateStr); await setDoc(corteRef,{fecha_dia:dateStr,total,tickets:conteo,desglose:desg,atendio:ATENDIO,creado:serverTimestamp()});
-  }
+// ===== SOLO impresión + guardado del corte: FACTURADO / NO FACTURADO =====
+async function generarCorteParaDia(dateStr){
+  // Resumen original (métodos de pago y conteo)
+  const { total: totalResumen, conteo, desg } = await calcularResumenDeDia(dateStr);
+  if (conteo === 0) { alert('No hay ventas en ' + dateStr); return; }
+
+  // Ventas del día para separar por facturación (solo para IMPRESIÓN/GUARDADO del corte)
+  const [Y, M, D] = dateStr.split('-').map(Number);
+  const start = new Date(Y, M - 1, D, 0, 0, 0, 0);
+  const end   = new Date(Y, M - 1, D, 23, 59, 59, 999);
+  const tsStart = Timestamp.fromDate(start), tsEnd = Timestamp.fromDate(end);
+
+  const ventasRef = collection(db, 'rutas_venta', rutaId, 'ventas');
+  const qv = query(ventasRef, where('fecha','>=',tsStart), where('fecha','<',tsEnd), orderBy('fecha','asc'));
+  const snap = await getDocs(qv);
+
+  let totFact = 0, impFact = 0, totNoFact = 0, impNoFact = 0;
+  snap.forEach(s=>{
+    const v   = s.data();
+    const t   = Number(v.total || 0);
+    const imp = Number(v.impuestos || 0);
+    const ocupa = (v.cliente_ocupa_factura !== undefined)
+      ? !!v.cliente_ocupa_factura
+      : !!(v.cliente_info && v.cliente_info.ocupa_factura);
+
+    if (ocupa) { totFact += t; impFact += imp; }
+    else       { totNoFact += t; impNoFact += imp; }
+  });
+
+  const subFact     = +(totFact    - impFact).toFixed(2);
+  const subNoFact   = +(totNoFact  - impNoFact).toFixed(2);
+  const subtotalDia = +(subFact + subNoFact).toFixed(2);
+  const impGlobal   = +(impFact + impNoFact).toFixed(2);
+  const totGlobal   = +(totFact + totNoFact).toFixed(2); // ~ totalResumen
+
+  // ===== Armar ticket para impresión =====
+  const folioCorte = `C-${dateStr.replaceAll('-','')}`;
+  const fechaTxt   = new Date().toLocaleString();
+
+  document.getElementById('tFolio').textContent   = `CORTE: ${folioCorte}`;
+  document.getElementById('tFecha').textContent   = fechaTxt;
+  document.getElementById('tAtendio').textContent = ATENDIO;
+  document.getElementById('tCliente').textContent = `Ruta: ${rutaId}`;
+  document.getElementById('tTipo').textContent    = `Corte del día ${dateStr}`;
+
+  const tLineas = document.getElementById('tLineas');
+  tLineas.innerHTML = '';
+
+  const mk  = (l,r)=>{const d=document.createElement('div'); d.className='t-row'; d.innerHTML=`<span class="t-desc">${l}</span><span class="t-imp">${money(r)}</span>`; return d;};
+  const sep = (t)=>{const d=document.createElement('div'); d.className='t-row'; d.style.fontWeight='700'; d.innerHTML=`<span class="t-desc">— ${t} —</span><span class="t-imp"></span>`; return d;};
+
+  // FACTURADO
+  tLineas.appendChild(sep('FACTURADO'));
+  tLineas.appendChild(mk('Subtotal',  subFact));
+  tLineas.appendChild(mk('Impuestos', impFact));
+  tLineas.appendChild(mk('Total',     totFact));
+
+  // NO FACTURADO
+  tLineas.appendChild(sep('NO FACTURADO'));
+  tLineas.appendChild(mk('Subtotal',  subNoFact));
+  tLineas.appendChild(mk('Impuestos', impNoFact));
+  tLineas.appendChild(mk('Total',     totNoFact));
+
+  // MÉTODOS DE PAGO (tu bloque original)
+  tLineas.appendChild(sep('MÉTODOS DE PAGO'));
+  tLineas.appendChild(mk('EFECTIVO',     desg.efectivo));
+  tLineas.appendChild(mk('TARJETA',      desg.tarjeta));
+  tLineas.appendChild(mk('TRANSFER',     desg.transferencia));
+  tLineas.appendChild(mk('MIXTO',        desg.mixto));
+
+  // Totales generales impresos
+  document.getElementById('tSubtotal').textContent  = money(subtotalDia);
+  document.getElementById('tImpuestos').textContent = money(impGlobal);
+  document.getElementById('tTotal').textContent     = money(totGlobal);
+
+  document.getElementById('tMetodo').textContent='—';
+  document.getElementById('tRecibidoRow').style.display='none';
+  document.getElementById('tNotas').textContent='Fin de día';
+
+  // Imprimir
+  window.print();
+
+  // ===== Guardar en el MISMO doc del corte =====
+  const corteRef = doc(db, 'rutas_venta', rutaId, 'cortes', dateStr);
+  await setDoc(corteRef, {
+    fecha_dia: dateStr,
+    total: totGlobal,                 // total del día
+    subtotal_dia: subtotalDia,        // nuevo
+    impuestos_dia: impGlobal,         // nuevo
+    tickets: conteo,
+    desglose: desg,                   // efectivo/tarjeta/transfer/mixto
+    facturado: {                      // nuevo
+      subtotal:  subFact,
+      impuestos: impFact,
+      total:     totFact
+    },
+    no_facturado: {                   // nuevo
+      subtotal:  subNoFact,
+      impuestos: impNoFact,
+      total:     totNoFact
+    },
+    atendio: ATENDIO,
+    creado: serverTimestamp()
+  }, { merge: true });
+}
   async function corteDelDia(){const hoy=toYYYYMMDD(new Date()); await generarCorteParaDia(hoy);}
 
   // ===== Botones =====
