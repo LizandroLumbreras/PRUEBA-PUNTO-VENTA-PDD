@@ -225,6 +225,12 @@
       <hr>
       <div class="t-core" id="tCliente"></div>
       <div class="t-core" id="tTipoRow">Tipo precio: <span id="tTipo"></span></div>
+
+      <!-- NUEVO: Facturación en ticket -->
+      <div class="t-core" id="tFacturaRow">Factura: <span id="tFacturaVal"></span></div>
+      <div class="t-core" id="tRFCRow" style="display:none;">RFC: <span id="tRFC"></span></div>
+      <div class="t-core" id="tCFDIRow" style="display:none;">Uso CFDI: <span id="tCFDI"></span></div>
+
       <hr>
       <div class="t-core" id="tLineas"></div>
       <hr>
@@ -395,23 +401,74 @@
   }
   async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas'); const docRef=await addDoc(col,payload); return docRef.id;}
 
+  // ===== Ticket =====
   function rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}){
+    // Encabezados
     document.getElementById('tFolio').textContent=`Folio: ${folio}`;
     document.getElementById('tFecha').textContent=fechaTxt;
     document.getElementById('tAtendio').textContent=ATENDIO;
-    const partes=[`Cliente: ${clienteTxt}`]; if(clienteSeleccionado){if(clienteSeleccionado.telefono)partes.push(`Tel: ${clienteSeleccionado.telefono}`); if(clienteSeleccionado.ciudad)partes.push(clienteSeleccionado.ciudad);}
+
+    // Cliente
+    const partes=[`Cliente: ${clienteTxt}`];
+    if(clienteSeleccionado){
+      if(clienteSeleccionado.telefono) partes.push(`Tel: ${clienteSeleccionado.telefono}`);
+      if(clienteSeleccionado.ciudad)   partes.push(clienteSeleccionado.ciudad);
+    }
     document.getElementById('tCliente').textContent=partes.join(' · ');
     document.getElementById('tTipo').textContent="Público";
-    const tLineas=document.getElementById('tLineas'); tLineas.innerHTML='';
-    carrito.forEach(it=>{const fila=document.createElement('div'); fila.className='t-row'; fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`; tLineas.appendChild(fila);});
+
+    // Detalle de líneas
+    const tLineas=document.getElementById('tLineas');
+    tLineas.innerHTML='';
+    carrito.forEach(it=>{
+      const fila=document.createElement('div');
+      fila.className='t-row';
+      fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`;
+      tLineas.appendChild(fila);
+    });
+
+    // Totales (impuestos incluidos)
     const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
     document.getElementById('tSubtotal').textContent=money(subtotal);
     document.getElementById('tImpuestos').textContent=money(impuestos);
     document.getElementById('tTotal').textContent=money(total);
+
+    // Método y recibido/cambio
     document.getElementById('tMetodo').textContent=metodo.toUpperCase();
     const rRow=document.getElementById('tRecibidoRow');
-    if(metodo==='efectivo'||metodo==='mixto'){rRow.style.display='block'; document.getElementById('tRecibido').textContent=money(recibido); document.getElementById('tCambio').textContent=money(cambio);} else {rRow.style.display='none';}
-    const notasExtra=[]; if(clienteSeleccionado){notasExtra.push(`Factura: ${clienteSeleccionado.ocupa_factura?'Sí':'No'}`);} if(notas&&notas.trim())notasExtra.push(`Notas: ${notas.trim()}`); document.getElementById('tNotas').textContent=notasExtra.join(' · ');
+    if(metodo==='efectivo'||metodo==='mixto'){
+      rRow.style.display='block';
+      document.getElementById('tRecibido').textContent=money(recibido);
+      document.getElementById('tCambio').textContent=money(cambio);
+    }else{
+      rRow.style.display='none';
+    }
+
+    // ===== Factura, RFC y Uso CFDI =====
+    const facturaSi = !!(clienteSeleccionado && clienteSeleccionado.ocupa_factura);
+    document.getElementById('tFacturaVal').textContent = facturaSi ? 'Sí' : 'No';
+    document.getElementById('tFacturaRow').style.display = 'block';
+
+    const rfcVal  = (clienteSeleccionado && clienteSeleccionado.rfc) ? clienteSeleccionado.rfc : '—';
+    const cfdiVal = (clienteSeleccionado && clienteSeleccionado.uso_cfdi) ? clienteSeleccionado.uso_cfdi : '—';
+
+    const rfcRow  = document.getElementById('tRFCRow');
+    const cfdiRow = document.getElementById('tCFDIRow');
+
+    if (facturaSi){
+      rfcRow.style.display  = 'block';
+      cfdiRow.style.display = 'block';
+      document.getElementById('tRFC').textContent  = rfcVal;
+      document.getElementById('tCFDI').textContent = cfdiVal;
+    }else{
+      rfcRow.style.display  = 'none';
+      cfdiRow.style.display = 'none';
+    }
+
+    // Notas (libres)
+    const notasExtra=[];
+    if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
+    document.getElementById('tNotas').textContent=notasExtra.join(' · ');
   }
 
   async function confirmarCobro(){
@@ -422,13 +479,33 @@
       const recibido=parseFloat(montoRecibido.value||'0');
       if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){alert('Pago insuficiente'); return;}
       const cambio=Math.max(0,recibido-total); const notas=(notasCobro.value||'').trim();
+
+      // Validación cuando el cliente sí factura
+      const requiereFactura = !!(clienteSeleccionado && clienteSeleccionado.ocupa_factura);
+      if (requiereFactura && (!clienteSeleccionado.rfc || !clienteSeleccionado.uso_cfdi)) {
+        alert('Este cliente solicita factura. Falta RFC y/o Uso de CFDI en su registro.');
+        return;
+      }
+
       const folio=await getNextFolio(db); const fecha=new Date(); const fechaTxt=fecha.toLocaleString(); const fecha_dia=toYYYYMMDD(fecha);
-      const venta={folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-        atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-        cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,subtotal,impuestos,total,notas,
-        detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))};
+      const venta={
+        folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
+        cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
+        atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
+        recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
+        cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
+        subtotal,impuestos,total,notas,
+        // Guardar datos de facturación
+        cliente_rfc: clienteSeleccionado?.rfc || null,
+        cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
+        cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
+        detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))
+      };
       const docId=await guardarVentaEnFirestore(venta);
-      rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}); window.print();
+
+      rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});
+      window.print();
+
       carrito=[]; render(); cerrarCobro();
     }catch(err){console.error(err); alert('Error guardando venta');}
   }
