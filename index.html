@@ -352,12 +352,39 @@
     render();
   }
 
+  // ===== Parche: Detectar códigos de balanza =====
+  function detectarCodigoPeso(codigoStr){
+    if(/^\d{13}$/.test(codigoStr) && codigoStr.startsWith("20")){
+      const base = codigoStr.substring(0,7);       // ej. 2000768
+      const pesoNum = parseInt(codigoStr.substring(7,12),10); // ej. 00100
+      const pesoKg = pesoNum/1000;                 // 0.100 kg
+      return {base, pesoKg};
+    }
+    return null;
+  }
+
   // ===== Buscador =====
   function buscarLocal(qraw){
     const q=(qraw||"").trim(); if(!q)return[];
-    const idByCode=codeIndex.get(q); if(idByCode){const p=catalogo.find(x=>x.id===idByCode); if(p)return[p];}
+
+    // 1) Intento balanza
+    const detectado = detectarCodigoPeso(q);
+    if(detectado){
+      const idByCode=codeIndex.get(detectado.base);
+      if(idByCode){
+        const prod=catalogo.find(x=>x.id===idByCode);
+        if(prod){
+          return [{...prod,cantidadBalanza:detectado.pesoKg}];
+        }
+      }
+    }
+
+    // 2) Normal
+    const idByCode=codeIndex.get(q);
+    if(idByCode){const p=catalogo.find(x=>x.id===idByCode); if(p)return[p];}
     const nq=normaliza(q); return catalogo.filter(p=>normaliza(p.nombre).includes(nq));
   }
+
   function pintarResultados(hits){
     elResultados.innerHTML=""; if(hits.length===0){elResultados.style.display="none";return;}
     elResultados.style.display="block";
@@ -369,9 +396,36 @@
     });
   }
   elBuscador.addEventListener('input',()=>pintarResultados(buscarLocal(elBuscador.value)));
-  elBuscador.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){const hits=buscarLocal(elBuscador.value.trim()); if(hits.length>=1){prodSeleccionado=hits[0]; elResultados.style.display="none"; elBuscador.value=hits[0].nombre; elCant.focus(); elCant.select();}}});
-  elCant.addEventListener('keydown',(ev)=>{if(ev.key==='Enter'){if(!clienteSeleccionado){alert('Selecciona un cliente primero.');elCliente.focus();return;} if(!prodSeleccionado){alert('Selecciona un producto.');elBuscador.focus();return;} const cant=parseFloat(elCant.value||''); if(isNaN(cant)||cant<=0){alert('Ingresa cantidad válida.');elCant.focus();return;} addProduct(prodSeleccionado,cant); prodSeleccionado=null; elBuscador.value=''; elCant.value='1'; elBuscador.focus();}});
+  elBuscador.addEventListener('keydown',(ev)=>{
+    if(ev.key==='Enter'){
+      const hits=buscarLocal(elBuscador.value.trim());
+      if(hits.length>=1){
+        prodSeleccionado=hits[0];
+        elResultados.style.display="none";
+        elBuscador.value=hits[0].nombre;
+        elCant.focus(); elCant.select();
+      }
+    }
+  });
 
+  elCant.addEventListener('keydown',(ev)=>{
+    if(ev.key==='Enter'){
+      if(!clienteSeleccionado){alert('Selecciona un cliente primero.');elCliente.focus();return;}
+      if(!prodSeleccionado){alert('Selecciona un producto.');elBuscador.focus();return;}
+
+      let cant;
+      if(prodSeleccionado.cantidadBalanza){
+        cant=prodSeleccionado.cantidadBalanza;
+      }else{
+        cant=parseFloat(elCant.value||'');
+        if(isNaN(cant)||cant<=0){alert('Ingresa cantidad válida.');elCant.focus();return;}
+      }
+
+      addProduct(prodSeleccionado,cant);
+      prodSeleccionado=null; elBuscador.value=''; elCant.value='1'; elBuscador.focus();
+    }
+  });
+  
   // ===== Cobro =====
   const modalCobro=document.getElementById('modalCobro');
   const cobroTotal=document.getElementById('cobroTotal');
