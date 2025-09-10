@@ -429,13 +429,38 @@ const btnCerrarCam = document.getElementById('btnCerrarCam');
 let lector = null;
 
 async function abrirCam(){
+  // Requiere https o localhost
+  if (!(location.protocol === 'https:' || location.hostname === 'localhost')) {
+    alert('La cámara requiere HTTPS o localhost.');
+    return;
+  }
+
   document.body.classList.add('modal-open');
   camModal.style.display = 'flex';
 
   if (lector) { try{ await lector.stop(); }catch{} }
   lector = new Html5Qrcode('camReader');
 
-  // Handlers
+  // 1) Detectar cámaras disponibles
+  let cameras = [];
+  try{
+    // html5-qrcode provee este helper
+    cameras = await Html5Qrcode.getCameras();
+  }catch(e){
+    console.error('enumerateDevices error', e);
+  }
+
+  if (!cameras || cameras.length === 0) {
+    alert('No se detectó ninguna cámara en este dispositivo.');
+    camModal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+    return;
+  }
+
+  // Elegir la trasera si existe
+  const backCam = cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+  const deviceConfig = { deviceId: { exact: backCam.id } };
+
   const onScanSuccess = async (codigo) => {
     try{ await lector.stop(); }catch{}
     lector = null;
@@ -443,7 +468,6 @@ async function abrirCam(){
     document.body.classList.remove('modal-open');
 
     elBuscador.value = (codigo || '').trim();
-
     const hits = buscarLocal(elBuscador.value);
     if (hits.length >= 1) {
       prodSeleccionado = hits[0];
@@ -456,32 +480,42 @@ async function abrirCam(){
     }
   };
 
-  const onScanError = (_err) => { /* opcional: log */ };
+  const onScanError = (_err) => {};
+
+  const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+  const commonOpts = {
+    fps: 10,
+    qrbox: box,
+    formatsToSupport: (window.Html5QrcodeSupportedFormats)
+      ? [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128]
+      : undefined
+  };
 
   try{
-    const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
-    await lector.start(
-      { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: box,
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.CODE_128
-        ]
-      },
-      onScanSuccess,
-      onScanError
-    );
-  }catch(e){
-    console.error('Error cámara:', e);
-    alert('No se pudo abrir la cámara');
-    camModal.style.display = 'none';
-    document.body.classList.remove('modal-open');
+    // 2) Intento 1: iniciar con la cámara elegida
+    await lector.start(deviceConfig, commonOpts, onScanSuccess, onScanError);
+  }catch(err1){
+    console.warn('Fallo start con deviceId, probando facingMode…', err1);
+    try{
+      // 3) Fallback: facingMode environment (ideal)
+      await lector.start({ facingMode: "environment" }, commonOpts, onScanSuccess, onScanError);
+    }catch(err2){
+      console.warn('Fallo start con facingMode, probando genérico…', err2);
+      try{
+        // 4) Último intento: cualquier cámara disponible
+        await lector.start({ video: true }, commonOpts, onScanSuccess, onScanError);
+      }catch(err3){
+        console.error('Error cámara (todos los intentos):', err3);
+        alert('No se pudo abrir la cámara en este dispositivo.');
+        try{ await lector.stop(); }catch{}
+        lector = null;
+        camModal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+      }
+    }
   }
 }
-
-
+  
 function cerrarCam(){
   if (lector) { lector.stop().catch(()=>{}); lector = null; }
   camModal.style.display = 'none';
