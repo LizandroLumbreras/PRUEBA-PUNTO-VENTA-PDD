@@ -164,6 +164,9 @@
     <section class="actions">
       <button class="btn" id="btnCobrar">Cobrar</button>
       <button class="btn" id="btnCorte">Corte del día</button>
+       <button class="btn" id="btnReimprimir" style="margin-top:10px; background:linear-gradient(180deg,#6b7280,#374151);">
+    🧾 Reimprimir ticket
+  </button>
     </section>
   </main>
 
@@ -205,6 +208,36 @@
     </div>
   </div>
 
+  <!-- Modal Reimpresión de Tickets -->
+<div id="modalReimp" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1300; align-items:center; justify-content:center;">
+  <div class="modal-card" style="width:min(720px,96vw); background:#fff; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.25); overflow:hidden;">
+    <div class="modal-h" style="display:flex; align-items:center; justify-content:space-between;">
+      <span>Reimprimir tickets</span>
+      <button id="btnCerrarReimp" class="btn" style="background:#aaa; width:auto; padding:8px 12px; font-size:14px;">Cerrar</button>
+    </div>
+    <div class="modal-b" style="padding:14px 16px; display:flex; flex-direction:column; gap:10px;">
+      <!-- Filtros -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input id="filtroFolio" type="text" placeholder="Buscar por folio o cliente..." style="flex:1; padding:10px; border-radius:10px; border:1px solid #e1e5ea;">
+        <input id="filtroFecha" type="date" style="padding:10px; border-radius:10px; border:1px solid #e1e5ea;">
+        <button id="btnBuscarTickets" class="btn" style="width:auto; padding:10px 12px; font-size:14px;">Buscar</button>
+      </div>
+
+      <!-- Lista -->
+      <div id="listaTickets" style="max-height:50vh; overflow:auto; border:1px solid #e5e7eb; border-radius:12px;">
+        <!-- items renderizados por JS -->
+      </div>
+
+      <!-- Paginación simple -->
+      <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+        <button id="btnPrevTickets" class="btn" style="width:auto; padding:8px 10px; font-size:14px; background:#64748b;">◀</button>
+        <span id="lblPagina" style="min-width:70px; text-align:center;">1</span>
+        <button id="btnNextTickets" class="btn" style="width:auto; padding:8px 10px; font-size:14px; background:#64748b;">▶</button>
+      </div>
+    </div>
+  </div>
+</div>
+  
   <!-- Ticket imprimible -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
@@ -276,6 +309,23 @@
   let carrito=[], prodSeleccionado=null, clienteSeleccionado=null;
   let catalogo=[], clientes=[]; const codeIndex=new Map();
   const normaliza=s=>(s||'').toString().trim().toLowerCase();
+
+  // === Reimpresión ===
+const modalReimp       = document.getElementById('modalReimp');
+const btnReimprimir    = document.getElementById('btnReimprimir');
+const btnCerrarReimp   = document.getElementById('btnCerrarReimp');
+const btnBuscarTickets = document.getElementById('btnBuscarTickets');
+const filtroFolio      = document.getElementById('filtroFolio');
+const filtroFecha      = document.getElementById('filtroFecha');
+const listaTickets     = document.getElementById('listaTickets');
+const btnPrevTickets   = document.getElementById('btnPrevTickets');
+const btnNextTickets   = document.getElementById('btnNextTickets');
+const lblPagina        = document.getElementById('lblPagina');
+
+let _tickets = [];          // cache de la última búsqueda
+let _pagina  = 1;           // página actual
+const _porPag = 10;         // items por página
+let _ultimoDocPuntero = null; // para paginación “siguiente” con Firestore (opcional)
 
   // ===== Catálogo =====
   async function cargarCatalogoDesdeFirestore(){
