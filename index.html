@@ -1081,6 +1081,11 @@ async function enviarTelegramVenta(venta) {
       });
     }
 
+    // 👇 Agregar link de Google Maps si hay ubicación
+    if (venta.ubicacion) {
+      msg += `\n📍 [Ver ubicación](https://maps.google.com/?q=${venta.ubicacion.lat},${venta.ubicacion.lng})`;
+    }
+
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
