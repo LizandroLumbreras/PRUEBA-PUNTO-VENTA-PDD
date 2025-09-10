@@ -114,6 +114,14 @@
       .ticket .t-header.biz{ font-size: calc(var(--ticket-font) - 3px); }
       .ticket .t-core,.ticket .t-core *{ font-size: calc(var(--ticket-font) - 3px); }
     }
+    .searchbox{ position:relative; }
+.cam-btn{
+  position:absolute; right:14px; top:50%; transform:translateY(-50%);
+  border:none; padding:8px 10px; border-radius:10px; cursor:pointer;
+  background:#0c6cbd; color:#fff; font-size:16px;
+}
+.cam-btn:active{ transform:translateY(-49%); }
+
   </style>
 </head>
 <body>
@@ -129,11 +137,12 @@
         <input id="cliente" list="clientesList" type="text" placeholder="Nombre del cliente"/>
         <datalist id="clientesList"></datalist>
       </div>
-      <div class="field searchbox">
-        <label>Buscar</label>
-        <input id="buscador" type="text" placeholder="Escribe o escanea código…">
-        <div id="resultados" class="search-results"></div>
-      </div>
+<div class="field searchbox">
+  <label>Buscar</label>
+  <input id="buscador" type="text" placeholder="Escribe o escanea código…">
+  <button id="btnCam" class="cam-btn" type="button">📷</button>
+  <div id="resultados" class="search-results"></div>
+</div>
       <div class="field">
         <label>Cantidad</label>
         <input id="cantidadInput" type="number" step="0.01" min="0.01" value="1">
@@ -237,7 +246,15 @@
     </div>
   </div>
 </div>
-  
+
+  <!-- 👇 AQUI pega el modal de la cámara -->
+<div id="camModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1500; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:12px; padding:12px; width:min(420px,90vw)">
+    <div id="camReader" style="width:100%"></div>
+    <button id="btnCerrarCam" class="btn" style="margin-top:8px; background:#aaa; width:100%;">Cerrar</button>
+  </div>
+</div>
+
   <!-- Ticket imprimible -->
   <div id="ticketArea">
     <div id="ticket" class="ticket">
@@ -279,6 +296,8 @@
       <div class="t-thanks">¡Gracias por su compra!</div>
     </div>
   </div>
+  
+  <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -311,6 +330,78 @@
   let carrito=[], prodSeleccionado=null, clienteSeleccionado=null;
   let catalogo=[], clientes=[]; const codeIndex=new Map();
   const normaliza=s=>(s||'').toString().trim().toLowerCase();
+
+  // === Cámara / QR ===
+const btnCam       = document.getElementById('btnCam');
+const camModal     = document.getElementById('camModal');
+const camReaderDiv = document.getElementById('camReader');
+const btnCerrarCam = document.getElementById('btnCerrarCam');
+
+let lector = null;
+
+async function abrirCam(){
+  document.body.classList.add('modal-open');
+  camModal.style.display = 'flex';
+
+  if (lector) { try{ await lector.stop(); }catch{} }
+  lector = new Html5Qrcode('camReader');
+
+  // Handlers
+  const onScanSuccess = async (codigo) => {
+    try{ await lector.stop(); }catch{}
+    lector = null;
+    camModal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+
+    elBuscador.value = (codigo || '').trim();
+
+    const hits = buscarLocal(elBuscador.value);
+    if (hits.length >= 1) {
+      prodSeleccionado = hits[0];
+      elResultados.style.display = "none";
+      elBuscador.value = hits[0].nombre;
+      elCant.focus(); elCant.select();
+    } else {
+      pintarResultados(buscarLocal(elBuscador.value));
+      elBuscador.focus();
+    }
+  };
+
+  const onScanError = (_err) => { /* opcional: loggear si quieres */ };
+
+  try{
+    const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+    await lector.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: box,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.CODE_128
+        ]
+      },
+      onScanSuccess,
+      onScanError
+    );
+  }catch(e){
+    console.error('Error cámara:', e);
+    alert('No se pudo abrir la cámara');
+    camModal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+}
+
+function cerrarCam(){
+  if (lector) { lector.stop().catch(()=>{}); lector = null; }
+  camModal.style.display = 'none';
+  document.body.classList.remove('modal-open');
+}
+
+btnCam.addEventListener('click', abrirCam);
+btnCerrarCam.addEventListener('click', cerrarCam);
+camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
+window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && camModal.style.display === 'flex') cerrarCam(); });
 
   // === Reimpresión ===
 const modalReimp       = document.getElementById('modalReimp');
