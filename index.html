@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <link rel="icon" href="data:,">
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
   <title>POS – Ruta de Venta</title>
@@ -326,9 +327,51 @@ function openDB() {
   });
 }
 
-async function guardarVentaOffline(venta) { ... }
-async function getVentasPendientes() { ... }
-async function borrarVentaPendiente(folio) { ... }
+// IndexedDB simple para colas offline
+function openLocalDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('posDB', 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('ventasPendientes')) {
+        db.createObjectStore('ventasPendientes', { keyPath: 'folio' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror  = () => reject(request.error);
+  });
+}
+
+async function guardarVentaOffline(venta) {
+  const db = await openLocalDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventasPendientes', 'readwrite');
+    tx.objectStore('ventasPendientes').put(venta);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
+async function getVentasPendientes() {
+  const db = await openLocalDB();
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction('ventasPendientes', 'readonly');
+    const req = tx.objectStore('ventasPendientes').getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+async function borrarVentaPendiente(folio) {
+  const db = await openLocalDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventasPendientes', 'readwrite');
+    tx.objectStore('ventasPendientes').delete(folio);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror    = () => reject(tx.error);
+  });
+}
+
 
   const firebaseConfig = {
     apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
