@@ -420,22 +420,61 @@ async function borrarVentaPendiente(folio) {
   let catalogo=[], clientes=[]; const codeIndex=new Map();
   const normaliza=s=>(s||'').toString().trim().toLowerCase();
 
-  // === Cámara / QR ===
+// === Cámara / QR ===
 const btnCam       = document.getElementById('btnCam');
 const camModal     = document.getElementById('camModal');
 const camReaderDiv = document.getElementById('camReader');
 const btnCerrarCam = document.getElementById('btnCerrarCam');
 
 let lector = null;
+let camActiva = false;
+
+function onScanSuccess(codigo) {
+  camActiva = false;
+  try { lector?.stop(); } catch {}
+  try { lector?.clear(); } catch {}
+  lector = null;
+
+  camModal.style.display = 'none';
+  document.body.classList.remove('modal-open');
+
+  // Reusar tu flujo de búsqueda
+  elBuscador.value = (codigo || '').trim();
+  const hits = buscarLocal(elBuscador.value);
+  if (hits.length >= 1) {
+    prodSeleccionado = hits[0];
+    elResultados.style.display = "none";
+    elBuscador.value = hits[0].nombre;
+    elCant.focus(); elCant.select();
+  } else {
+    pintarResultados(buscarLocal(elBuscador.value));
+    elBuscador.focus();
+  }
+}
+
+function onScanError(_err) {
+  // opcional: console.log(_err);
+}
 
 async function abrirCam(){
   document.body.classList.add('modal-open');
   camModal.style.display = 'flex';
 
-  if (lector) { try{ await lector.stop(); }catch{} }
-  lector = new Html5Qrcode('camReader');
+  if (!navigator.mediaDevices?.getUserMedia) {
+    alert("Este navegador no soporta acceso a cámara.");
+    cerrarCam();
+    return;
+  }
 
   try {
+    // Limpiar instancia previa
+    if (lector) {
+      try { await lector.stop(); } catch {}
+      try { await lector.clear(); } catch {}
+    }
+    lector = new Html5Qrcode('camReader');
+
+    // Listar cámaras
     const devices = await Html5Qrcode.getCameras();
     if (!devices || devices.length === 0) {
       alert("No se detectó ninguna cámara en este dispositivo.");
@@ -443,50 +482,56 @@ async function abrirCam(){
       return;
     }
 
-    // Usa la primera cámara disponible o la trasera si existe
+    // Elegir trasera si existe
     const camId = devices.find(d=>/back|environment/i.test(d.label))?.id || devices[0].id;
 
     const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
     await lector.start(
       { deviceId: { exact: camId } },
-      { fps: 10, qrbox: box },
+      {
+        fps: 10,
+        qrbox: box,
+        // Si SOLO lees códigos de barras, deja EAN_13 y CODE_128.
+        // Si también quieres QR, agrega QR_CODE:
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      },
       onScanSuccess,
       onScanError
     );
+    camActiva = true;
   } catch(e) {
     console.error("Error cámara:", e);
-    alert("No se pudo abrir la cámara");
+    const msg =
+      e?.name === 'NotAllowedError'   ? "Permiso de cámara denegado. Actívalo en los permisos del navegador."
+    : e?.name === 'NotFoundError'     ? "No se encontró ninguna cámara disponible."
+    : e?.name === 'NotReadableError'  ? "La cámara está en uso por otra app."
+    : e?.message || "No se pudo abrir la cámara";
+    alert(msg);
     cerrarCam();
   }
 }
-  
+
 function cerrarCam(){
-  if (lector) { lector.stop().catch(()=>{}); lector = null; }
+  if (lector) {
+    if (camActiva) { try { lector.stop(); } catch {} }
+    try { lector.clear(); } catch {}
+    lector = null;
+    camActiva = false;
+  }
   camModal.style.display = 'none';
   document.body.classList.remove('modal-open');
 }
 
+// Eventos
 btnCam.addEventListener('click', abrirCam);
 btnCerrarCam.addEventListener('click', cerrarCam);
 camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
 window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && camModal.style.display === 'flex') cerrarCam(); });
 
-  // === Reimpresión ===
-const modalReimp       = document.getElementById('modalReimp');
-const btnReimprimir    = document.getElementById('btnReimprimir');
-const btnCerrarReimp   = document.getElementById('btnCerrarReimp');
-const btnBuscarTickets = document.getElementById('btnBuscarTickets');
-const filtroFolio      = document.getElementById('filtroFolio');
-const filtroFecha      = document.getElementById('filtroFecha');
-const listaTickets     = document.getElementById('listaTickets');
-const btnPrevTickets   = document.getElementById('btnPrevTickets');
-const btnNextTickets   = document.getElementById('btnNextTickets');
-const lblPagina        = document.getElementById('lblPagina');
-
-let _tickets = [];          // cache de la última búsqueda
-let _pagina  = 1;           // página actual
-const _porPag = 10;         // items por página
-let _ultimoDocPuntero = null; // para paginación “siguiente” con Firestore (opcional)
 
   // ===== Catálogo =====
   async function cargarCatalogoDesdeFirestore(){
