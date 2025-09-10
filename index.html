@@ -305,6 +305,30 @@
     getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
     getDocs, getDoc, query, where, orderBy, Timestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+// ===== IndexedDB helper =====
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open("pos_ruta", 1);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains("ventas_pendientes")) {
+        db.createObjectStore("ventas_pendientes", { keyPath: "folio" });
+      }
+      if (!db.objectStoreNames.contains("cache_catalogo")) {
+        db.createObjectStore("cache_catalogo", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("cache_clientes")) {
+        db.createObjectStore("cache_clientes", { keyPath: "id" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function guardarVentaOffline(venta) { ... }
+async function getVentasPendientes() { ... }
+async function borrarVentaPendiente(folio) { ... }
 
   const firebaseConfig = {
     apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
