@@ -413,7 +413,7 @@ async function abrirCam(){
     }
   };
 
-  const onScanError = (_err) => { /* opcional: loggear si quieres */ };
+  const onScanError = (_err) => { /* opcional: log */ };
 
   try{
     const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
@@ -437,6 +437,7 @@ async function abrirCam(){
     document.body.classList.remove('modal-open');
   }
 }
+
 
 function cerrarCam(){
   if (lector) { lector.stop().catch(()=>{}); lector = null; }
