@@ -327,6 +327,28 @@
   const pad2=n=>String(n).padStart(2,'0');
   const toYYYYMMDD=(date)=>{const d=new Date(date); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;};
 
+  async function obtenerUbicacion(){
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        });
+      },
+      (err) => {
+        console.warn("No se pudo obtener ubicación:", err);
+        resolve(null);
+      },
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  });
+}
+ 
   let carrito=[], prodSeleccionado=null, clienteSeleccionado=null;
   let catalogo=[], clientes=[]; const codeIndex=new Map();
   const normaliza=s=>(s||'').toString().trim().toLowerCase();
@@ -894,27 +916,28 @@ async function confirmarCobro(){
       alert('Este cliente solicita factura. Falta RFC y/o Uso de CFDI en su registro.');
       return;
     }
-
+    
     const folio=await getNextFolio(db);
     const fecha=new Date();
     const fechaTxt=fecha.toLocaleString();
     const fecha_dia=toYYYYMMDD(fecha);
-
-    const venta={
-      folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
-      cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-      atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
-      recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-      cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
-      subtotal,impuestos,total,notas,
-      cliente_rfc: clienteSeleccionado?.rfc || null,
-      cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
-      cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
-      detalle:carrito.map(it=>({
-        id:it.id,nombre:it.nombre,cantidad:it.cantidad,
-        precio_unit:it.precioUnit,importe:it.importe
-      }))
-    };
+    const ubicacion = await obtenerUbicacion();
+const venta={
+  folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
+  cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
+  atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
+  recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
+  cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
+  subtotal,impuestos,total,notas,
+  cliente_rfc: clienteSeleccionado?.rfc || null,
+  cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
+  cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
+  ubicacion: ubicacion || null,   // 👈 aquí sí va
+  detalle:carrito.map(it=>({
+    id:it.id,nombre:it.nombre,cantidad:it.cantidad,
+    precio_unit:it.precioUnit,importe:it.importe
+  }))
+};
 
     const docId=await guardarVentaEnFirestore(venta);
 
