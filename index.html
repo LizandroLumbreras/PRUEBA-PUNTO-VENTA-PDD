@@ -283,18 +283,18 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
-  getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
-  getDocs, getDoc, query, where, orderBy, Timestamp
-} 
-  
-const firebaseConfig = {
-  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
-  authDomain: "inventariopv-643f1.firebaseapp.com",
-  projectId: "inventariopv-643f1",
-  storageBucket: "inventariopv-643f1.firebasestorage.app",
-  messagingSenderId: "96242533231",
-  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-};
+    getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
+    getDocs, getDoc, query, where, orderBy, Timestamp
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+    authDomain: "inventariopv-643f1.firebaseapp.com",
+    projectId: "inventariopv-643f1",
+    storageBucket: "inventariopv-643f1.appspot.com",
+    messagingSenderId: "96242533231",
+    appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+  };
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
@@ -503,8 +503,6 @@ btnReimprimir.addEventListener('click', abrirReimp);
 btnCerrarReimp.addEventListener('click', cerrarReimp);
 modalReimp.addEventListener('click', (e)=>{ if(e.target === modalReimp) cerrarReimp(); });
 btnBuscarTickets.addEventListener('click', ()=>{ _pagina=1; buscarTickets(); });
-  
-  import { getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 function rellenarTicketDesdeVenta(venta){
   // Encabezados
