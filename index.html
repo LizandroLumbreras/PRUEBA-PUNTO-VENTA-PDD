@@ -282,17 +282,19 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
-           getDocs, query, where, orderBy, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  const firebaseConfig = {
-    apiKey: "TU_APIKEY",
-    authDomain: "inventariopv-643f1.firebaseapp.com",
-    projectId: "inventariopv-643f1",
-    storageBucket: "inventariopv-643f1.appspot.com",
-    messagingSenderId: "96242533231",
-    appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
-  };
+  import {
+  getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
+  getDocs, getDoc, query, where, orderBy, Timestamp
+} 
+  
+const firebaseConfig = {
+  apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
+  authDomain: "inventariopv-643f1.firebaseapp.com",
+  projectId: "inventariopv-643f1",
+  storageBucket: "inventariopv-643f1.firebasestorage.app",
+  messagingSenderId: "96242533231",
+  appId: "1:96242533231:web:aae75a18fbaf9840529e9a"
+};
   const app = initializeApp(firebaseConfig);
   const db  = getFirestore(app);
 
@@ -484,6 +486,216 @@ let _ultimoDocPuntero = null; // para paginación “siguiente” con Firestore 
   const montoRecibido=document.getElementById('montoRecibido');
   const montoCambio=document.getElementById('montoCambio');
   const notasCobro=document.getElementById('notasCobro');
+
+ function abrirReimp(){
+  document.body.classList.add('modal-open');
+  modalReimp.style.display = 'flex';
+  _pagina = 1;
+  filtroFecha.value = toYYYYMMDD(new Date()); // ← opcional
+  buscarTickets();
+}
+function cerrarReimp(){
+  modalReimp.style.display = 'none';
+  document.body.classList.remove('modal-open');
+}
+
+btnReimprimir.addEventListener('click', abrirReimp);
+btnCerrarReimp.addEventListener('click', cerrarReimp);
+modalReimp.addEventListener('click', (e)=>{ if(e.target === modalReimp) cerrarReimp(); });
+btnBuscarTickets.addEventListener('click', ()=>{ _pagina=1; buscarTickets(); });
+  
+  import { getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+function rellenarTicketDesdeVenta(venta){
+  // Encabezados
+  document.getElementById('tFolio').textContent = `Folio: ${venta.folio||'-'}`;
+  document.getElementById('tFecha').textContent = venta.fecha_txt || '';
+  document.getElementById('tAtendio').textContent = venta.atendio || ATENDIO || '';
+
+  // Cliente (texto simple del registro)
+  document.getElementById('tCliente').textContent = `Cliente: ${venta.cliente || 'Mostrador'}`;
+  document.getElementById('tTipo').textContent = "Público";
+
+  // RFC / CFDI visibles si ocupa factura
+  const tFacturaRow = document.getElementById('tFacturaRow');
+  const tRFCRow     = document.getElementById('tRFCRow');
+  const tCFDIRow    = document.getElementById('tCFDIRow');
+
+  const facturaSi   = !!venta.cliente_ocupa_factura;
+  tFacturaRow.style.display = 'block';
+  document.getElementById('tFacturaVal').textContent = facturaSi ? 'Sí' : 'No';
+
+  if (facturaSi){
+    tRFCRow.style.display  = 'block';
+    tCFDIRow.style.display = 'block';
+    document.getElementById('tRFC').textContent  = venta.cliente_rfc || '—';
+    document.getElementById('tCFDI').textContent = venta.cliente_uso_cfdi || '—';
+  } else {
+    tRFCRow.style.display  = 'none';
+    tCFDIRow.style.display = 'none';
+  }
+
+  // Detalle
+  const tLineas = document.getElementById('tLineas');
+  tLineas.innerHTML = '';
+  (venta.detalle||[]).forEach(it=>{
+    const fila=document.createElement('div');
+    fila.className='t-row';
+    const cant = Number(it.cantidad||0).toFixed(2);
+    const imp  = money(Number(it.importe||0));
+    fila.innerHTML = `<span class="t-desc">${cant} ${it.nombre||''}</span><span class="t-imp">${imp}</span>`;
+    tLineas.appendChild(fila);
+  });
+
+  // Totales
+  document.getElementById('tSubtotal').textContent  = money(Number(venta.subtotal||0));
+  document.getElementById('tImpuestos').textContent = money(Number(venta.impuestos||0));
+  document.getElementById('tTotal').textContent     = money(Number(venta.total||0));
+
+  // Método y recibido/cambio
+  document.getElementById('tMetodo').textContent = (venta.metodo_pago||'').toUpperCase();
+  const rRow = document.getElementById('tRecibidoRow');
+  if ((venta.metodo_pago||'').toLowerCase()==='efectivo' || (venta.metodo_pago||'').toLowerCase()==='mixto'){
+    rRow.style.display='block';
+    document.getElementById('tRecibido').textContent = money(Number(venta.recibido||0));
+    document.getElementById('tCambio').textContent   = money(Number(venta.cambio||0));
+  } else {
+    rRow.style.display='none';
+  }
+
+  document.getElementById('tNotas').textContent = (venta.notas||'');
+}
+
+async function reimprimirVentaPorId(docId, imprimir=true){
+  try{
+    const ref = doc(db, 'rutas_venta', rutaId, 'ventas', docId);
+    const snap = await getDoc(ref);
+    if(!snap.exists()){ alert('No se encontró el ticket.'); return; }
+    const venta = snap.data();
+
+    venta.detalle   = venta.detalle || [];
+    venta.total     = Number(venta.total||0);
+    venta.subtotal  = Number(venta.subtotal||0);
+    venta.impuestos = Number(venta.impuestos||0);
+
+    rellenarTicketDesdeVenta(venta);
+    if (imprimir) window.print();
+  }catch(e){
+    console.error(e);
+    alert('No se pudo reimprimir este ticket.');
+  }
+}
+
+
+async function buscarTickets(){
+  listaTickets.innerHTML = '<div style="padding:10px; color:#64748b;">Buscando…</div>';
+  try{
+    const ventasRef = collection(db,'rutas_venta',rutaId,'ventas');
+    let qv;
+    const dateStr = (filtroFecha.value || '').trim();
+    if (dateStr) {
+      const [Y,M,D]=dateStr.split('-').map(Number);
+      const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
+      const tsStart = Timestamp.fromDate(start), tsEnd = Timestamp.fromDate(end);
+      qv = query(ventasRef, where('fecha','>=',tsStart), where('fecha','<',tsEnd), orderBy('fecha','desc'));
+    } else {
+      qv = query(ventasRef, orderBy('fecha','desc'));
+    }
+
+    const snap = await getDocs(qv);
+    const todos = [];
+    snap.forEach(s=>{
+      const v=s.data();
+      todos.push({
+        id: s.id,
+        folio: v.folio || '',
+        cliente: v.cliente || '',
+        fecha_txt: v.fecha_txt || '',
+        total: Number(v.total||0),
+        metodo: v.metodo_pago || '',
+        detalle: v.detalle || [],
+        atendio: v.atendio || '',
+        subtotal: Number(v.subtotal||0),
+        impuestos: Number(v.impuestos||0),
+        recibido: Number(v.recibido||0),
+        cambio: Number(v.cambio||0),
+        notas: v.notas || '',
+        cliente_rfc: v.cliente_rfc || null,
+        cliente_uso_cfdi: v.cliente_uso_cfdi || null,
+        cliente_ocupa_factura: !!v.cliente_ocupa_factura
+      });
+    });
+
+    const f = (filtroFolio.value || '').trim().toLowerCase();
+    _tickets = f ? todos.filter(t =>
+      (t.folio||'').toLowerCase().includes(f) ||
+      (t.cliente||'').toLowerCase().includes(f)
+    ) : todos;
+
+    renderListaTickets();
+  }catch(e){
+    console.error(e);
+    listaTickets.innerHTML = '<div style="padding:10px; color:#b91c1c;">Error al consultar tickets. Revisa índices o conexión.</div>';
+  }
+}
+
+
+function renderListaTickets(){
+  // paginación en memoria
+  const total = _tickets.length;
+  const maxPag = Math.max(1, Math.ceil(total/_porPag));
+  _pagina = Math.min(_pagina, maxPag);
+  const ini = (_pagina-1)*_porPag, fin = ini + _porPag;
+  const page = _tickets.slice(ini, fin);
+
+  lblPagina.textContent = `${_pagina}/${maxPag}`;
+  btnPrevTickets.disabled = (_pagina<=1);
+  btnNextTickets.disabled = (_pagina>=maxPag);
+
+  if (page.length === 0) {
+    listaTickets.innerHTML = '<div style="padding:10px; color:#64748b;">Sin resultados.</div>';
+    return;
+    }
+
+  listaTickets.innerHTML = '';
+  page.forEach(t=>{
+    const row = document.createElement('div');
+    row.style.padding = '10px 12px';
+    row.style.borderBottom = '1px solid #e5e7eb';
+    row.innerHTML = `
+      <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+        <div style="min-width:220px;">
+          <div><b>Folio:</b> ${t.folio}</div>
+          <div><b>Cliente:</b> ${t.cliente}</div>
+          <div><small>${t.fecha_txt}</small></div>
+        </div>
+        <div style="text-align:right;">
+          <div><b>Total:</b> ${money(t.total)}</div>
+          <div><small>Método: ${t.metodo?.toUpperCase()}</small></div>
+        </div>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn" data-id="${t.id}" data-action="print"  style="width:auto; padding:8px 12px; font-size:14px;">Imprimir</button>
+        <button class="btn" data-id="${t.id}" data-action="preview" style="width:auto; padding:8px 12px; font-size:14px; background:#6b7280;">Vista previa</button>
+      </div>
+    `;
+    listaTickets.appendChild(row);
+  });
+}
+
+btnPrevTickets.addEventListener('click', ()=>{ if(_pagina>1){ _pagina--; renderListaTickets(); }});
+btnNextTickets.addEventListener('click', ()=>{ const maxPag=Math.max(1,Math.ceil(_tickets.length/_porPag)); if(_pagina<maxPag){ _pagina++; renderListaTickets(); }});
+
+// Delegación de eventos para imprimir/preview
+listaTickets.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('button[data-action][data-id]');
+  if(!btn) return;
+  const id = btn.getAttribute('data-id');
+  const action = btn.getAttribute('data-action');
+  await reimprimirVentaPorId(id, action==='print');
+if (action === 'print') cerrarReimp(); // opcional
+});
+
 
   function abrirCobro(){
     if(carrito.length===0){alert('Agrega productos primero');return;}
