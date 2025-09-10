@@ -1059,33 +1059,49 @@ async function generarCorteParaDia(dateStr){
   }, { merge: true });
 }
   async function corteDelDia(){const hoy=toYYYYMMDD(new Date()); await generarCorteParaDia(hoy);}
+
 // === Notificación a Telegram ===
 async function enviarTelegramVenta(venta) {
   try {
     const BOT_TOKEN = "8272633411:AAE6uKTpEtPW--IPk6ufix_CDGJ0dH6ru4Q"; // tu token
     const CHAT_ID   = "6617988297"; // tu chat_id
 
+    // Encabezado
     let msg = `
 🧾 *Nueva Venta*
 📌 Folio: ${venta.folio}
 👤 Cliente: ${venta.cliente || "Mostrador"}
-💲 Total: $${venta.total.toFixed(2)}
 💳 Método: ${venta.metodo_pago}
 🙋‍♂️ Atendió: ${venta.atendio}
     `;
 
-    if (venta.detalle && venta.detalle.length > 0) {
-      msg += `\n📦 *Productos:*\n`;
-      venta.detalle.forEach(it => {
-        msg += `- ${Number(it.cantidad).toFixed(2)} x ${it.nombre} ($${Number(it.importe).toFixed(2)})\n`;
-      });
-    }
-
-    // 👇 Agregar link de Google Maps si hay ubicación
-    if (venta.ubicacion) {
+    // Ubicación
+    if (venta.ubicacion?.lat && venta.ubicacion?.lng) {
       msg += `\n📍 [Ver ubicación](https://maps.google.com/?q=${venta.ubicacion.lat},${venta.ubicacion.lng})`;
     }
 
+    // Detalle en formato ticket
+    if (venta.detalle && venta.detalle.length > 0) {
+      msg += `\n\n📦 *Detalle:*\n`;
+      venta.detalle.forEach(it => {
+        const nombre = (it.nombre || "").substring(0, 25); // cortar a 25 caracteres
+        const cant   = Number(it.cantidad).toFixed(2);
+        const pUnit  = Number(it.precio_unit || 0).toFixed(2);
+        const imp    = Number(it.importe || 0).toFixed(2);
+        msg += `${cant} x ${nombre} ($${pUnit}) = $${imp}\n`;
+      });
+    }
+
+    // Totales
+    msg += `
+━━━━━━━━━━━━━━
+💲 Subtotal: $${Number(venta.subtotal||0).toFixed(2)}
+📊 Impuestos: $${Number(venta.impuestos||0).toFixed(2)}
+🟢 *TOTAL: $${Number(venta.total||0).toFixed(2)}*
+━━━━━━━━━━━━━━
+    `;
+
+    // Enviar a Telegram
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1099,7 +1115,6 @@ async function enviarTelegramVenta(venta) {
     console.error("Error enviando a Telegram:", err);
   }
 }
-
   // ===== Botones =====
   document.getElementById('btnCobrar').onclick=abrirCobro;
   document.getElementById('btnCancelarCobro').onclick=cerrarCobro;
