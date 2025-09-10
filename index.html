@@ -876,57 +876,60 @@ if (action === 'print') cerrarReimp(); // opcional
     document.getElementById('tNotas').textContent=notasExtra.join(' · ');
   }
 
-  async function confirmarCobro(){
-    try{
-      const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
-      const clienteTxt=elCliente.value||'Mostrador';
-      const metodo=metodoPago.value;
-      const recibido=parseFloat(montoRecibido.value||'0');
-      if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){alert('Pago insuficiente'); return;}
-      const cambio=Math.max(0,recibido-total); const notas=(notasCobro.value||'').trim();
+async function confirmarCobro(){
+  try{
+    const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
+    const clienteTxt=elCliente.value||'Mostrador';
+    const metodo=metodoPago.value;
+    const recibido=parseFloat(montoRecibido.value||'0');
+    if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){
+      alert('Pago insuficiente'); return;
+    }
+    const cambio=Math.max(0,recibido-total);
+    const notas=(notasCobro.value||'').trim();
 
-      // Validación cuando el cliente sí factura
-      const requiereFactura = !!(clienteSeleccionado && clienteSeleccionado.ocupa_factura);
-      if (requiereFactura && (!clienteSeleccionado.rfc || !clienteSeleccionado.uso_cfdi)) {
-        alert('Este cliente solicita factura. Falta RFC y/o Uso de CFDI en su registro.');
-        return;
-      }
+    // Validación factura
+    const requiereFactura = !!(clienteSeleccionado && clienteSeleccionado.ocupa_factura);
+    if (requiereFactura && (!clienteSeleccionado.rfc || !clienteSeleccionado.uso_cfdi)) {
+      alert('Este cliente solicita factura. Falta RFC y/o Uso de CFDI en su registro.');
+      return;
+    }
 
-      const folio=await getNextFolio(db); const fecha=new Date(); const fechaTxt=fecha.toLocaleString(); const fecha_dia=toYYYYMMDD(fecha);
-      const venta={
-        folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
-        cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-        atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
-        recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-        cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
-        subtotal,impuestos,total,notas,
-        // Guardar datos de facturación
-        cliente_rfc: clienteSeleccionado?.rfc || null,
-        cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
-        cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
-        detalle:carrito.map(it=>({id:it.id,nombre:it.nombre,cantidad:it.cantidad,precio_unit:it.precioUnit,importe:it.importe}))
-      };
-      const docId=await guardarVentaEnFirestore(venta);
+    const folio=await getNextFolio(db);
+    const fecha=new Date();
+    const fechaTxt=fecha.toLocaleString();
+    const fecha_dia=toYYYYMMDD(fecha);
 
-      rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});
-      window.print();
+    const venta={
+      folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
+      cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
+      atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
+      recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
+      cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
+      subtotal,impuestos,total,notas,
+      cliente_rfc: clienteSeleccionado?.rfc || null,
+      cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
+      cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
+      detalle:carrito.map(it=>({
+        id:it.id,nombre:it.nombre,cantidad:it.cantidad,
+        precio_unit:it.precioUnit,importe:it.importe
+      }))
+    };
 
-      carrito=[]; render(); cerrarCobro();
-    }catch(err){console.error(err); alert('Error guardando venta');}
+    const docId=await guardarVentaEnFirestore(venta);
+
+    // 👉 Telegram aquí
+    await enviarTelegramVenta(venta);
+
+    rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});
+    window.print();
+
+    carrito=[]; render(); cerrarCobro();
+  }catch(err){
+    console.error(err);
+    alert('Error guardando venta');
   }
-
-  // ===== Corte del día =====
-  async function calcularResumenDeDia(dateStr){
-    const [Y,M,D]=dateStr.split('-').map(Number);
-    const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
-    const tsStart=Timestamp.fromDate(start), tsEnd=Timestamp.fromDate(end);
-    const ventasRef=collection(db,'rutas_venta',rutaId,'ventas');
-    const qv=query(ventasRef,where('fecha','>=',tsStart),where('fecha','<',tsEnd),orderBy('fecha','asc'));
-    const snap=await getDocs(qv);
-    let total=0,conteo=0; const desg={efectivo:0,tarjeta:0,transferencia:0,mixto:0};
-    snap.forEach(s=>{const v=s.data(),t=Number(v.total||0); total+=t; conteo++; const m=(v.metodo_pago||'').toLowerCase(); if(m==='efectivo')desg.efectivo+=t; else if(m==='tarjeta')desg.tarjeta+=t; else if(m==='transferencia')desg.transferencia+=t; else if(m==='mixto')desg.mixto+=t;});
-    return {total,conteo,desg};
-  }
+}
 // ===== SOLO impresión + guardado del corte: FACTURADO / NO FACTURADO =====
 async function generarCorteParaDia(dateStr){
   // Resumen original (métodos de pago y conteo)
@@ -1033,6 +1036,41 @@ async function generarCorteParaDia(dateStr){
   }, { merge: true });
 }
   async function corteDelDia(){const hoy=toYYYYMMDD(new Date()); await generarCorteParaDia(hoy);}
+// === Notificación a Telegram ===
+async function enviarTelegramVenta(venta) {
+  try {
+    const BOT_TOKEN = "8272633411:AAE6uKTpEtPW--IPk6ufix_CDGJ0dH6ru4Q"; // tu token
+    const CHAT_ID   = "6617988297"; // tu chat_id
+
+    let msg = `
+🧾 *Nueva Venta*
+📌 Folio: ${venta.folio}
+👤 Cliente: ${venta.cliente || "Mostrador"}
+💲 Total: $${venta.total.toFixed(2)}
+💳 Método: ${venta.metodo_pago}
+🙋‍♂️ Atendió: ${venta.atendio}
+    `;
+
+    if (venta.detalle && venta.detalle.length > 0) {
+      msg += `\n📦 *Productos:*\n`;
+      venta.detalle.forEach(it => {
+        msg += `- ${Number(it.cantidad).toFixed(2)} x ${it.nombre} ($${Number(it.importe).toFixed(2)})\n`;
+      });
+    }
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: msg,
+        parse_mode: "Markdown"
+      })
+    });
+  } catch (err) {
+    console.error("Error enviando a Telegram:", err);
+  }
+}
 
   // ===== Botones =====
   document.getElementById('btnCobrar').onclick=abrirCobro;
