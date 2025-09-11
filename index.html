@@ -153,12 +153,13 @@
 #camReader video,
 #camReader canvas{
   position:absolute!important;
-  top:0; left:0;
-  width:100%!important;
-  height:100%!important;
+  top:-1px;                 /* sangrar 1px */
+  left:-1px;                /* sangrar 1px */
+  width:calc(100% + 2px)!important;   /* tapa cualquier hueco */
+  height:calc(100% + 2px)!important;
   object-fit:cover!important;
   object-position:center center!important;
-  transform:none!important;
+  transform:translateZ(0)!important;  /* evita redondeos raros */
 }
 
 /* Solo iOS: 1% extra para tapar el micro-gap derecho de Safari */
@@ -597,10 +598,10 @@ async function abrirCam(){
   if (!w || !h) { w = 420; h = 236; } // fallback 16:9
 
 const boxPx = Math.floor(Math.min(w, h) * 0.85);
+const toEven = n => n - (n % 2);      // ← helper a número par
 
-// 👇 AQUI va el bloque para crear el marco y pasar las medidas al CSS
-const qrW = boxPx;
-const qrH = Math.floor(boxPx * 0.65);
+const qrW = toEven(boxPx);
+const qrH = toEven(Math.floor(boxPx * 0.65));
 
 // Pasamos las medidas al CSS
 camReaderDiv.style.setProperty('--qr-w', qrW + 'px');
