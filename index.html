@@ -166,6 +166,33 @@
   height: 100% !important;
   pointer-events: none;
 }
+    /* Oculta el overlay/corners que trae la librería (causa el desfasado) */
+#camReader .qr-shaded-region{ display:none !important; }
+
+/* Nuestro marco y sombreado */
+#camReader .qr-frame{
+  position:absolute; left:50%; top:50%;
+  width:var(--qr-w, 260px); height:var(--qr-h, 160px);
+  transform:translate(-50%,-50%);
+  pointer-events:none; border-radius:10px;
+  /* sombreado fuera del recuadro */
+  box-shadow: 0 0 0 200vmax rgba(0,0,0,.45);
+}
+
+/* Esquinas del marco (8 “líneas” con backgrounds) */
+#camReader .qr-frame::before{
+  content:""; position:absolute; inset:0; border-radius:10px;
+  background:
+    linear-gradient(#fff,#fff) left   top    /28px 4px  no-repeat,
+    linear-gradient(#fff,#fff) left   top    /4px  28px no-repeat,
+    linear-gradient(#fff,#fff) right  top    /28px 4px  no-repeat,
+    linear-gradient(#fff,#fff) right  top    /4px  28px no-repeat,
+    linear-gradient(#fff,#fff) left   bottom /28px 4px  no-repeat,
+    linear-gradient(#fff,#fff) left   bottom /4px  28px no-repeat,
+    linear-gradient(#fff,#fff) right  bottom /28px 4px  no-repeat,
+    linear-gradient(#fff,#fff) right  bottom /4px  28px no-repeat;
+}
+
     
   </style>
 </head>
@@ -554,26 +581,39 @@ async function abrirCam(){
   let h = camReaderDiv.clientHeight;
   if (!w || !h) { w = 420; h = 236; } // fallback 16:9
 
-  const boxPx = Math.floor(Math.min(w, h) * 0.85);
+const boxPx = Math.floor(Math.min(w, h) * 0.85);
 
-  const F = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
-  const formats = [F.EAN_13, F.CODE_128];
+// 👇 AQUI va el bloque para crear el marco y pasar las medidas al CSS
+const qrW = boxPx;
+const qrH = Math.floor(boxPx * 0.65);
 
-  const config = {
-    fps: 15,
-    qrbox: { width: boxPx, height: Math.floor(boxPx * 0.65) },
-    formatsToSupport: formats,
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    rememberLastUsedCamera: true,
-    disableFlip: true,
-    videoConstraints: {
-      facingMode: { ideal: "environment" },
-      focusMode: "continuous",
-      width: { ideal: 1280 },
-      aspectRatio: { ideal: 16/9 }
-    }
-  };
+// Pasamos las medidas al CSS
+camReaderDiv.style.setProperty('--qr-w', qrW + 'px');
+camReaderDiv.style.setProperty('--qr-h', qrH + 'px');
 
+// Si ya había un marco, lo quitamos y creamos uno nuevo
+camReaderDiv.querySelector('.qr-frame')?.remove();
+const frame = document.createElement('div');
+frame.className = 'qr-frame';
+camReaderDiv.appendChild(frame);
+
+const F = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
+const formats = [F.EAN_13, F.CODE_128];
+
+const config = {
+  fps: 15,
+  qrbox: { width: qrW, height: qrH },   // 👈 usamos las mismas medidas
+  formatsToSupport: formats,
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+  rememberLastUsedCamera: true,
+  disableFlip: true,
+  videoConstraints: {
+    facingMode: { ideal: "environment" },
+    focusMode: "continuous",
+    width: { ideal: 1280 },
+    aspectRatio: { ideal: 16/9 }
+  }
+};
   try {
     await lector.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
     camActiva = true;
