@@ -492,50 +492,55 @@ async function abrirCam(){
     return;
   }
 
+  const Fmts = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
+  const box  = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+  const config = {
+    fps: 10,
+    qrbox: box,
+    formatsToSupport: [Fmts.EAN_13, Fmts.CODE_128, Fmts.QR_CODE],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+  };
+
   try {
     // Limpia instancia previa
-    if (lector) {
-      try { await lector.stop(); } catch {}
-      try { await lector.clear(); } catch {}
-    }
+    if (lector) { try { await lector.stop(); } catch {} try { await lector.clear(); } catch {} }
     lector = new Html5Qrcode('camReader');
 
-    // Listar cámaras (HTTPS o localhost)
-    const devices = await Html5Qrcode.getCameras();
-    if (!devices || devices.length === 0) {
-      alert("No se detectó ninguna cámara en este dispositivo.");
-      cerrarCam();
-      return;
-    }
-
-    // Elegir trasera si existe
-    const back = devices.find(d => /back|rear|environment/i.test(d.label));
-    const camId = back?.id || devices[0].id;
-
-    const Fmts = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
-    const box  = Math.floor(Math.min(window.innerWidth * 0.8, 320));
-   const configBase = {
-  fps: 10, qrbox: box,
-  formatsToSupport: [Fmts.EAN_13, Fmts.CODE_128, Fmts.QR_CODE],
-  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
-};
-
-    // 1) Intento por deviceId (Android/desktop)
+    // Paso 1: arranque provisional por facingMode (dispara permiso en iOS)
     try {
-      await lector.start({ deviceId: { exact: camId } }, configBase, onScanSuccess, onScanError);
-    } catch (e1) {
-      // 2) Fallback por facingMode (iOS/Safari)
-      await lector.start({ facingMode: 'environment' }, configBase, onScanSuccess, onScanError);
+      await lector.start({ facingMode: 'environment' }, config, onScanSuccess, onScanError);
+      camActiva = true;
+    } catch (e) {
+      // Si falla, seguimos; intentaremos directo por deviceId
     }
 
-    camActiva = true;
-  } catch (e) {
+    // Paso 2: listar cámaras con labels y elegir la trasera
+    let devices = [];
+    try { devices = await Html5Qrcode.getCameras(); } catch {}
+    if (!devices || devices.length === 0) {
+      throw new Error("No se detectó ninguna cámara en este dispositivo.");
+    }
+
+    // Elegir "back/rear/environment"; si no hay, usa la última (suele ser trasera)
+    const idxBack = devices.findIndex(d => /back|rear|environment/i.test(d.label));
+    const target  = idxBack >= 0 ? devices[idxBack] : devices[devices.length - 1];
+
+    // Si ya estamos corriendo y NO es la cámara objetivo, cambiamos
+    const needSwitch = true; // simplificamos: siempre reiniciamos al deviceId objetivo
+    if (needSwitch) {
+      try { await lector.stop(); } catch {}
+      try { await lector.clear(); } catch {}
+      lector = new Html5Qrcode('camReader');
+      await lector.start({ deviceId: { exact: target.id } }, config, onScanSuccess, onScanError);
+      camActiva = true;
+    }
+  } catch(e) {
     console.error("Error cámara:", e);
     const msg =
-      e?.name === 'NotAllowedError'   ? "Permiso de cámara denegado. Actívalo en los permisos del navegador."
-    : e?.name === 'NotFoundError'     ? "No se encontró ninguna cámara disponible."
-    : e?.name === 'NotReadableError'  ? "La cámara está en uso por otra app."
-    : e?.name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra o permite el acceso."
+      e?.name === 'NotAllowedError'     ? "Permiso de cámara denegado. Actívalo en los permisos del navegador."
+    : e?.name === 'NotFoundError'       ? "No se encontró ninguna cámara disponible."
+    : e?.name === 'NotReadableError'    ? "La cámara está en uso por otra app."
+    : e?.name === 'OverconstrainedError'? "No se pudo abrir esa cámara. Revisa permisos."
     : (e?.message || "No se pudo abrir la cámara");
     alert(msg);
     cerrarCam();
