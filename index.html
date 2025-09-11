@@ -205,11 +205,11 @@ body.is-ios #camReader canvas{
     linear-gradient(#fff,#fff) right  bottom /28px 4px  no-repeat,
     linear-gradient(#fff,#fff) right  bottom /4px  28px no-repeat;
 }
-.field input, .field select { 
-  flex:1; padding:10px 12px; border:none; border-radius:8px; 
+.field input, .field select{
+  flex:1; padding:10px 12px; border:none; border-radius:8px;
   font-size:15px; background:#fff; outline:none;
 }
-    
+
   </style>
 </head>
 <body>
@@ -220,12 +220,13 @@ body.is-ios #camReader canvas{
 
   <main class="wrap">
     <section class="controls">
-    <div class="field">
+ <div class="field">
   <label>Cliente</label>
   <select id="cliente">
     <option value="">Selecciona un cliente…</option>
   </select>
 </div>
+
 <div class="field searchbox">
   <label>Buscar</label>
   <input id="buscador" type="text" placeholder="Escribe o escanea código…">
@@ -686,41 +687,50 @@ window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && camModal.styl
     });
   }
 
-  // ===== Clientes (llenar <select>) =====
+// ===== Clientes (llenar <select>) =====
 async function cargarClientes(){
-  clientes = [];
-  const sel = document.getElementById("cliente");
-  sel.innerHTML = '<option value="">Selecciona un cliente…</option>';
+  try {
+    clientes = [];
+    const sel = document.getElementById("cliente");
+    sel.innerHTML = '<option value="">Selecciona un cliente…</option>';
 
-  const snap = await getDocs(collection(db, "rutas_venta", rutaId, "clientes"));
-  snap.forEach(d => {
-    const c = d.data(); 
-    if (c.activo === false) return;
+    const snap = await getDocs(collection(db, "rutas_venta", rutaId, "clientes"));
+    snap.forEach(d => {
+      const c = d.data();
+      if (c.activo === false) return;
 
-    const cli = {
-      id: d.id,
-      nombre: c.nombre || "",
-      alias: c.alias || "",
-      telefono: c.telefono || "",
-      ciudad: c.ciudad || "",
-      rfc: c.rfc || "",
-      ocupa_factura: !!c.ocupa_factura,
-      uso_cfdi: c.uso_cfdi || ""
-    };
-    clientes.push(cli);
+      const cli = {
+        id: d.id,
+        nombre: c.nombre || "",
+        alias: c.alias || "",
+        telefono: c.telefono || "",
+        ciudad: c.ciudad || "",
+        rfc: c.rfc || "",
+        ocupa_factura: !!c.ocupa_factura,
+        uso_cfdi: c.uso_cfdi || ""
+      };
+      clientes.push(cli);
 
-    const opt = document.createElement("option");
-    opt.value = cli.id; // guarda el id real
-    opt.textContent = cli.alias ? `${cli.nombre} (${cli.alias})` : cli.nombre;
-    sel.appendChild(opt);
-  });
+      const opt = document.createElement("option");
+      opt.value = cli.id; // GUARDAMOS EL ID
+      opt.textContent = cli.alias ? `${cli.nombre} (${cli.alias})` : cli.nombre;
+      sel.appendChild(opt);
+    });
+
+    console.log("[clientes] cargados:", clientes.length);
+  } catch (e) {
+    console.error("Error cargando clientes:", e);
+    alert("No pude cargar la lista de clientes (revisa conexión o permisos de Firestore).");
+  }
 }
 
-// cuando cambia el select:
+// cuando cambia el select, buscamos por ID
 elCliente.addEventListener("change", () => {
-  const id = elCliente.value || "";
+  const id = elCliente.value;
   clienteSeleccionado = clientes.find(c => c.id === id) || null;
+  console.log("[cliente] seleccionado:", clienteSeleccionado);
 });
+  
 tes(){
     clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
     const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
