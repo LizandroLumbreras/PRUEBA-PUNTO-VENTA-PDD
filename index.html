@@ -123,6 +123,14 @@
 }
 .cam-btn:active{ transform:translateY(-49%); }
 
+    /* REEMPLAZA el style inline del camReader por CSS así */
+#camReader{
+  width: min(92vw, 420px);
+  height: min(70vh, 420px);
+  margin: 0 auto;
+  position: relative;
+}
+    
   </style>
 </head>
 <body>
@@ -251,7 +259,7 @@
   <!-- 👇 AQUI pega el modal de la cámara -->
 <div id="camModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1500; align-items:center; justify-content:center;">
   <div style="background:#fff; border-radius:12px; padding:12px; width:min(420px,90vw)">
-    <div id="camReader" style="width:100%; height:320px"></div>
+    <div id="camReader"></div>
     <button id="btnCerrarCam" class="btn" style="margin-top:8px; background:#aaa; width:100%;">Cerrar</button>
   </div>
 </div>
@@ -446,10 +454,6 @@ const btnCerrarCam = document.getElementById('btnCerrarCam');
 let lector = null;
 let camActiva = false;
 
-const Fmts = window.Html5QrcodeSupportedFormats || {
-  QR_CODE: 0, EAN_13: 1, CODE_128: 2
-};
-
 function onScanSuccess(decodedText /*, decodedResult */) {
   camActiva = false;
   try { lector?.stop(); } catch {}
@@ -492,74 +496,79 @@ async function abrirCam(){
     return;
   }
 
-  // --- 1) Forzar permiso primero (Android) ---
+  // 1) Permiso primero (arregla Android)
   try {
-    const tmpStream = await navigator.mediaDevices.getUserMedia({ video: true });
-    // soltar inmediatamente (solo queríamos permiso)
-    tmpStream.getTracks().forEach(t => t.stop());
-  } catch (e) {
-    alert("No hay permiso de cámara. Concédelo en los permisos del navegador.");
-    cerrarCam();
-    return;
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+  } catch {
+    alert("No hay permiso de cámara. Actívalo en los permisos del navegador.");
+    cerrarCam(); return;
   }
 
-  // --- 2) Limpiar instancia previa ---
+  // ✅ Verificar cámaras visibles (ahora sí, tras permiso)
+  const afterPerm = await navigator.mediaDevices.enumerateDevices();
+  const hasVideo = afterPerm.some(d => d.kind === 'videoinput');
+  if (!hasVideo) {
+    alert("No hay cámaras visibles para el navegador. Revisa permisos del sitio, modo incógnito y que otra app no esté usando la cámara.");
+    cerrarCam(); return;
+  }
+
+  // 2) Limpiar instancia previa
   try { await lector?.stop(); } catch {}
   try { await lector?.clear(); } catch {}
   lector = new Html5Qrcode('camReader');
 
-  // --- 3) Calcular qrbox acorde al alto real del contenedor ---
+  // 3) qrbox según contenedor real (mejor lectura y sin estirar)
   const boxPx = Math.floor(Math.min(camReaderDiv.clientWidth, camReaderDiv.clientHeight) * 0.85);
 
-  // Formatos
+  // 4) Formatos (deja solo los que escaneas)
   const F = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
-  const formats = [F.EAN_13, F.CODE_128, F.QR_CODE]; // quita F.QR_CODE si no lees QR
+  const formats = [F.EAN_13, F.CODE_128]; // agrega F.QR_CODE si lo necesitas
 
   const config = {
     fps: 15,
-    qrbox: { width: boxPx, height: Math.floor(boxPx * 0.65) }, // mejor lectura de EAN/CODE128
+    qrbox: { width: boxPx, height: Math.floor(boxPx * 0.65) },
     formatsToSupport: formats,
     experimentalFeatures: { useBarCodeDetectorIfSupported: true },
     rememberLastUsedCamera: true,
-    // En iOS ayuda a que el video no se espeje:
     disableFlip: true,
-    // Sugerir enfoque continuo (algunos navegadores lo respetan):
     videoConstraints: {
+      facingMode: { ideal: "environment" },   // iOS prefiere esto
       focusMode: "continuous",
-      // pedir directamente trasera si el navegador lo soporta
-      facingMode: { ideal: "environment" }
+      width: { ideal: 1280 },
+      aspectRatio: { ideal: 16/9 }
     }
   };
 
   try {
-    // --- 4) Intentar elegir la trasera por deviceId si la podemos detectar ---
-    const devices = await Html5Qrcode.getCameras(); // ya tenemos permiso, aquí sí debe devolver
-    let camId = null;
-    if (devices && devices.length) {
-      const back = devices.find(d => /back|rear|environment/i.test(d.label));
-      camId = (back?.id) || devices[0].id;
-    }
-
-    if (camId) {
-      await lector.start({ deviceId: { exact: camId } }, config, onScanSuccess, onScanError);
-    } else {
-      // --- 5) Fallback: iOS/Safari (facingMode) ---
-      await lector.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
-    }
-
+    // A) Primero intenta iOS/Safari
+    await lector.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
     camActiva = true;
-  } catch (e) {
-    console.error("Error cámara:", e);
-    const msg =
-      e?.name === 'NotAllowedError'      ? "Permiso de cámara denegado."
-    : e?.name === 'NotFoundError'        ? "No se encontró ninguna cámara disponible."
-    : e?.name === 'NotReadableError'     ? "La cámara está en uso por otra app."
-    : e?.name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra."
-    : (e?.message || "No se pudo abrir la cámara");
-    alert(msg);
-    cerrarCam();
+  } catch (e1) {
+    try {
+      // B) Si falla, Android/deviceId
+      const devs = await Html5Qrcode.getCameras();
+      if (!devs?.length) throw new Error("NO_CAMERAS");
+      const back = devs.find(d => /back|rear|environment/i.test(d.label));
+      const camId = (back?.id) || devs[0].id;
+      await lector.start({ deviceId: { exact: camId } }, config, onScanSuccess, onScanError);
+      camActiva = true;
+    } catch (e2) {
+      console.error("Error cámara:", e1, e2);
+      const name = (e2?.name || e1?.name);
+      const msg =
+        name === 'NotAllowedError'      ? "Permiso de cámara denegado."
+      : name === 'NotFoundError' || e2?.message === 'NO_CAMERAS'
+                                        ? "No se encontró ninguna cámara disponible."
+      : name === 'NotReadableError'     ? "La cámara está en uso por otra app."
+      : name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra."
+      : "No se pudo abrir la cámara";
+      alert(msg);
+      cerrarCam();
+    }
   }
 }
+
 
 
 function cerrarCam(){
