@@ -135,6 +135,7 @@
   overflow: hidden;           /* evita que algo "crezca" afuera */
   background: #000;           /* ayuda a ver el encuadre real */
   aspect-ratio: 16 / 9;       /* estabiliza el layout en móviles */
+  border-radius: 12px;
 }
 
 /* Contenedor interno que crea la lib */
@@ -147,15 +148,12 @@
 }
 
 /* El <video> y el <canvas> SIEMPRE al 100% del contenedor */
+/* iOS/Safari: evita el micro-gap del lado derecho */
 #camReader video,
 #camReader canvas{
-  position:absolute!important;
-  top:0; left:0;
-  width:100%!important;
-  height:100%!important;
-  object-fit:cover!important;
-  object-position:center center!important; /* ← añade esto */
-  transform:none!important;
+  left: 50% !important;
+  transform: translateX(-50%) !important; /* ya lo centramos */
+  width: 101% !important;                 /* 1% extra tapa el gap */
 }
 
 /* La “sombra”/overlay que dibuja las esquinas */
