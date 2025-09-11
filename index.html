@@ -149,11 +149,24 @@
 
 /* El <video> y el <canvas> SIEMPRE al 100% del contenedor */
 /* iOS/Safari: evita el micro-gap del lado derecho */
+/* Por defecto (Android/desktop): llenar el contenedor exacto */
 #camReader video,
 #camReader canvas{
-  left: 50% !important;
-  transform: translateX(-50%) !important; /* ya lo centramos */
-  width: 101% !important;                 /* 1% extra tapa el gap */
+  position:absolute!important;
+  top:0; left:0;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important;
+  transform:none!important;
+}
+
+/* Solo iOS: 1% extra para tapar el micro-gap derecho de Safari */
+body.is-ios #camReader video,
+body.is-ios #camReader canvas{
+  left:50%!important;
+  transform:translateX(-50%)!important;
+  width:101%!important;
 }
 
 /* La “sombra”/overlay que dibuja las esquinas */
@@ -370,6 +383,10 @@
  <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script type="module">
+  // Detectar iOS y marcar el <body>
+const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent);
+document.body.classList.toggle('is-ios', isIOS);
+
   // Reimpresión: referencias a elementos y estado
 const modalReimp       = document.getElementById('modalReimp');
 const btnReimprimir    = document.getElementById('btnReimprimir');
