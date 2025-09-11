@@ -123,12 +123,48 @@
 }
 .cam-btn:active{ transform:translateY(-49%); }
 
-    /* REEMPLAZA el style inline del camReader por CSS así */
-#camReader{
+    /* Asegura que todo lo interno ocupa exactamente el contenedor */
+#camReader,
+#camReader * { box-sizing: border-box; }
+
+#camReader {
   width: min(92vw, 420px);
   height: min(70vh, 420px);
   margin: 0 auto;
   position: relative;
+  overflow: hidden;           /* evita que algo "crezca" afuera */
+  background: #000;           /* ayuda a ver el encuadre real */
+  aspect-ratio: 16 / 9;       /* estabiliza el layout en móviles */
+}
+
+/* Contenedor interno que crea la lib */
+#camReader .html5-qrcode-container,
+#camReader .html5-qrcode-camera,
+#camReader .html5-qrcode-video-container {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* El <video> y el <canvas> SIEMPRE al 100% del contenedor */
+#camReader video,
+#camReader canvas{
+  position:absolute!important;
+  top:0; left:0;
+  width:100%!important;
+  height:100%!important;
+  object-fit:cover!important;
+  object-position:center center!important; /* ← añade esto */
+  transform:none!important;
+}
+
+/* La “sombra”/overlay que dibuja las esquinas */
+#camReader .qr-shaded-region {
+  position: absolute !important;
+  top: 0; left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none;
 }
     
   </style>
@@ -490,13 +526,16 @@ async function abrirCam(){
   document.body.classList.add('modal-open');
   camModal.style.display = 'flex';
 
+  // Espera a que el modal se pinte y tenga tamaño real
+  await new Promise(r => requestAnimationFrame(r));
+  await new Promise(r => setTimeout(r, 0)); // 1 tick extra ayuda en Android
+
   if (!navigator.mediaDevices?.getUserMedia) {
     alert("Este navegador no soporta acceso a cámara.");
-    cerrarCam();
-    return;
+    cerrarCam(); return;
   }
 
-  // 1) Permiso primero (arregla Android)
+  // Permiso primero…
   try {
     const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
     tmp.getTracks().forEach(t => t.stop());
@@ -505,25 +544,20 @@ async function abrirCam(){
     cerrarCam(); return;
   }
 
-  // ✅ Verificar cámaras visibles (ahora sí, tras permiso)
-  const afterPerm = await navigator.mediaDevices.enumerateDevices();
-  const hasVideo = afterPerm.some(d => d.kind === 'videoinput');
-  if (!hasVideo) {
-    alert("No hay cámaras visibles para el navegador. Revisa permisos del sitio, modo incógnito y que otra app no esté usando la cámara.");
-    cerrarCam(); return;
-  }
-
-  // 2) Limpiar instancia previa
+  // Limpiar instancia previa
   try { await lector?.stop(); } catch {}
   try { await lector?.clear(); } catch {}
   lector = new Html5Qrcode('camReader');
 
-  // 3) qrbox según contenedor real (mejor lectura y sin estirar)
-  const boxPx = Math.floor(Math.min(camReaderDiv.clientWidth, camReaderDiv.clientHeight) * 0.85);
+  // IMPORTANTÍSIMO: medir DESPUÉS de pintar el modal
+  let w = camReaderDiv.clientWidth;
+  let h = camReaderDiv.clientHeight;
+  if (!w || !h) { w = 420; h = 236; } // fallback 16:9
 
-  // 4) Formatos (deja solo los que escaneas)
+  const boxPx = Math.floor(Math.min(w, h) * 0.85);
+
   const F = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
-  const formats = [F.EAN_13, F.CODE_128]; // agrega F.QR_CODE si lo necesitas
+  const formats = [F.EAN_13, F.CODE_128];
 
   const config = {
     fps: 15,
@@ -533,7 +567,7 @@ async function abrirCam(){
     rememberLastUsedCamera: true,
     disableFlip: true,
     videoConstraints: {
-      facingMode: { ideal: "environment" },   // iOS prefiere esto
+      facingMode: { ideal: "environment" },
       focusMode: "continuous",
       width: { ideal: 1280 },
       aspectRatio: { ideal: 16/9 }
@@ -541,12 +575,10 @@ async function abrirCam(){
   };
 
   try {
-    // A) Primero intenta iOS/Safari
     await lector.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
     camActiva = true;
   } catch (e1) {
     try {
-      // B) Si falla, Android/deviceId
       const devs = await Html5Qrcode.getCameras();
       if (!devs?.length) throw new Error("NO_CAMERAS");
       const back = devs.find(d => /back|rear|environment/i.test(d.label));
@@ -555,21 +587,11 @@ async function abrirCam(){
       camActiva = true;
     } catch (e2) {
       console.error("Error cámara:", e1, e2);
-      const name = (e2?.name || e1?.name);
-      const msg =
-        name === 'NotAllowedError'      ? "Permiso de cámara denegado."
-      : name === 'NotFoundError' || e2?.message === 'NO_CAMERAS'
-                                        ? "No se encontró ninguna cámara disponible."
-      : name === 'NotReadableError'     ? "La cámara está en uso por otra app."
-      : name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra."
-      : "No se pudo abrir la cámara";
-      alert(msg);
+      alert("No se pudo abrir la cámara");
       cerrarCam();
     }
   }
 }
-
-
 
 function cerrarCam(){
   if (lector) {
