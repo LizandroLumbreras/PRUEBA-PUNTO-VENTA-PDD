@@ -251,7 +251,7 @@
   <!-- 👇 AQUI pega el modal de la cámara -->
 <div id="camModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1500; align-items:center; justify-content:center;">
   <div style="background:#fff; border-radius:12px; padding:12px; width:min(420px,90vw)">
-    <div id="camReader" style="width:100%"></div>
+    <div id="camReader" style="width:100%; height:320px"></div>
     <button id="btnCerrarCam" class="btn" style="margin-top:8px; background:#aaa; width:100%;">Cerrar</button>
   </div>
 </div>
@@ -298,14 +298,31 @@
     </div>
   </div>
   
-  <script src="https://unpkg.com/html5-qrcode"></script>
+ <script src="https://unpkg.com/html5-qrcode"></script>
 
 <script type="module">
+  // Reimpresión: referencias a elementos y estado
+const modalReimp       = document.getElementById('modalReimp');
+const btnReimprimir    = document.getElementById('btnReimprimir');
+const btnCerrarReimp   = document.getElementById('btnCerrarReimp');
+const filtroFolio      = document.getElementById('filtroFolio');
+const filtroFecha      = document.getElementById('filtroFecha');
+const btnBuscarTickets = document.getElementById('btnBuscarTickets');
+const listaTickets     = document.getElementById('listaTickets');
+const btnPrevTickets   = document.getElementById('btnPrevTickets');
+const btnNextTickets   = document.getElementById('btnNextTickets');
+const lblPagina        = document.getElementById('lblPagina');
+
+let _tickets = [];
+let _pagina  = 1;
+const _porPag = 10;
+
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import {
     getFirestore, collection, addDoc, setDoc, serverTimestamp, runTransaction, doc,
     getDocs, getDoc, query, where, orderBy, Timestamp
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  
 // ===== IndexedDB helper =====
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -429,7 +446,11 @@ const btnCerrarCam = document.getElementById('btnCerrarCam');
 let lector = null;
 let camActiva = false;
 
-function onScanSuccess(codigo) {
+const Fmts = window.Html5QrcodeSupportedFormats || {
+  QR_CODE: 0, EAN_13: 1, CODE_128: 2
+};
+
+function onScanSuccess(decodedText /*, decodedResult */) {
   camActiva = false;
   try { lector?.stop(); } catch {}
   try { lector?.clear(); } catch {}
@@ -439,7 +460,7 @@ function onScanSuccess(codigo) {
   document.body.classList.remove('modal-open');
 
   // Reusar tu flujo de búsqueda
-  elBuscador.value = (codigo || '').trim();
+  elBuscador.value = (decodedText || '').trim();
   const hits = buscarLocal(elBuscador.value);
   if (hits.length >= 1) {
     prodSeleccionado = hits[0];
@@ -453,7 +474,12 @@ function onScanSuccess(codigo) {
 }
 
 function onScanError(_err) {
-  // opcional: console.log(_err);
+  // Silencioso; si quieres mostrar algo, hazlo aquí
+}
+
+  const isLocalhost = /^localhost(:\d+)?$/.test(location.hostname) || location.hostname === '127.0.0.1';
+if (location.protocol !== 'https:' && !isLocalhost) {
+  alert('Para usar la cámara, abre esta página en HTTPS (o en http://localhost).');
 }
 
 async function abrirCam(){
@@ -467,14 +493,14 @@ async function abrirCam(){
   }
 
   try {
-    // Limpiar instancia previa
+    // Limpia instancia previa
     if (lector) {
       try { await lector.stop(); } catch {}
       try { await lector.clear(); } catch {}
     }
     lector = new Html5Qrcode('camReader');
 
-    // Listar cámaras
+    // Listar cámaras (HTTPS o localhost)
     const devices = await Html5Qrcode.getCameras();
     if (!devices || devices.length === 0) {
       alert("No se detectó ninguna cámara en este dispositivo.");
@@ -483,33 +509,34 @@ async function abrirCam(){
     }
 
     // Elegir trasera si existe
-    const camId = devices.find(d=>/back|environment/i.test(d.label))?.id || devices[0].id;
+    const back = devices.find(d => /back|rear|environment/i.test(d.label));
+    const camId = back?.id || devices[0].id;
 
-    const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
-    await lector.start(
-      { deviceId: { exact: camId } },
-      {
-        fps: 10,
-        qrbox: box,
-        // Si SOLO lees códigos de barras, deja EAN_13 y CODE_128.
-        // Si también quieres QR, agrega QR_CODE:
-        formatsToSupport: [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.QR_CODE
-        ]
-      },
-      onScanSuccess,
-      onScanError
-    );
+    const Fmts = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
+    const box  = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+   const configBase = {
+  fps: 10, qrbox: box,
+  formatsToSupport: [Fmts.EAN_13, Fmts.CODE_128, Fmts.QR_CODE],
+  experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+};
+
+    // 1) Intento por deviceId (Android/desktop)
+    try {
+      await lector.start({ deviceId: { exact: camId } }, configBase, onScanSuccess, onScanError);
+    } catch (e1) {
+      // 2) Fallback por facingMode (iOS/Safari)
+      await lector.start({ facingMode: 'environment' }, configBase, onScanSuccess, onScanError);
+    }
+
     camActiva = true;
-  } catch(e) {
+  } catch (e) {
     console.error("Error cámara:", e);
     const msg =
       e?.name === 'NotAllowedError'   ? "Permiso de cámara denegado. Actívalo en los permisos del navegador."
     : e?.name === 'NotFoundError'     ? "No se encontró ninguna cámara disponible."
     : e?.name === 'NotReadableError'  ? "La cámara está en uso por otra app."
-    : e?.message || "No se pudo abrir la cámara";
+    : e?.name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra o permite el acceso."
+    : (e?.message || "No se pudo abrir la cámara");
     alert(msg);
     cerrarCam();
   }
@@ -531,7 +558,6 @@ btnCam.addEventListener('click', abrirCam);
 btnCerrarCam.addEventListener('click', cerrarCam);
 camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
 window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && camModal.style.display === 'flex') cerrarCam(); });
-
 
   // ===== Catálogo =====
   async function cargarCatalogoDesdeFirestore(){
