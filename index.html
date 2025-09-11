@@ -122,6 +122,13 @@
   background:#0c6cbd; color:#fff; font-size:16px;
 }
 .cam-btn:active{ transform:translateY(-49%); }
+    /* Asegura un alto real al contenedor de cámara */
+#camReader{
+  width: min(92vw, 420px);
+  height: min(70vh, 420px);
+  margin: 0 auto;
+  position: relative;
+}
 
   </style>
 </head>
@@ -492,55 +499,69 @@ async function abrirCam(){
     return;
   }
 
-  const Fmts = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
-  const box  = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+  // --- 1) Forzar permiso primero (Android) ---
+  try {
+    const tmpStream = await navigator.mediaDevices.getUserMedia({ video: true });
+    // soltar inmediatamente (solo queríamos permiso)
+    tmpStream.getTracks().forEach(t => t.stop());
+  } catch (e) {
+    alert("No hay permiso de cámara. Concédelo en los permisos del navegador.");
+    cerrarCam();
+    return;
+  }
+
+  // --- 2) Limpiar instancia previa ---
+  try { await lector?.stop(); } catch {}
+  try { await lector?.clear(); } catch {}
+  lector = new Html5Qrcode('camReader');
+
+  // --- 3) Calcular qrbox acorde al alto real del contenedor ---
+  const boxPx = Math.floor(Math.min(camReaderDiv.clientWidth, camReaderDiv.clientHeight) * 0.85);
+
+  // Formatos
+  const F = window.Html5QrcodeSupportedFormats || { QR_CODE:0, EAN_13:1, CODE_128:2 };
+  const formats = [F.EAN_13, F.CODE_128, F.QR_CODE]; // quita F.QR_CODE si no lees QR
+
   const config = {
-    fps: 10,
-    qrbox: box,
-    formatsToSupport: [Fmts.EAN_13, Fmts.CODE_128, Fmts.QR_CODE],
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    fps: 15,
+    qrbox: { width: boxPx, height: Math.floor(boxPx * 0.65) }, // mejor lectura de EAN/CODE128
+    formatsToSupport: formats,
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    rememberLastUsedCamera: true,
+    // En iOS ayuda a que el video no se espeje:
+    disableFlip: true,
+    // Sugerir enfoque continuo (algunos navegadores lo respetan):
+    videoConstraints: {
+      focusMode: "continuous",
+      // pedir directamente trasera si el navegador lo soporta
+      facingMode: { ideal: "environment" }
+    }
   };
 
   try {
-    // Limpia instancia previa
-    if (lector) { try { await lector.stop(); } catch {} try { await lector.clear(); } catch {} }
-    lector = new Html5Qrcode('camReader');
-
-    // Paso 1: arranque provisional por facingMode (dispara permiso en iOS)
-    try {
-      await lector.start({ facingMode: 'environment' }, config, onScanSuccess, onScanError);
-      camActiva = true;
-    } catch (e) {
-      // Si falla, seguimos; intentaremos directo por deviceId
+    // --- 4) Intentar elegir la trasera por deviceId si la podemos detectar ---
+    const devices = await Html5Qrcode.getCameras(); // ya tenemos permiso, aquí sí debe devolver
+    let camId = null;
+    if (devices && devices.length) {
+      const back = devices.find(d => /back|rear|environment/i.test(d.label));
+      camId = (back?.id) || devices[0].id;
     }
 
-    // Paso 2: listar cámaras con labels y elegir la trasera
-    let devices = [];
-    try { devices = await Html5Qrcode.getCameras(); } catch {}
-    if (!devices || devices.length === 0) {
-      throw new Error("No se detectó ninguna cámara en este dispositivo.");
+    if (camId) {
+      await lector.start({ deviceId: { exact: camId } }, config, onScanSuccess, onScanError);
+    } else {
+      // --- 5) Fallback: iOS/Safari (facingMode) ---
+      await lector.start({ facingMode: "environment" }, config, onScanSuccess, onScanError);
     }
 
-    // Elegir "back/rear/environment"; si no hay, usa la última (suele ser trasera)
-    const idxBack = devices.findIndex(d => /back|rear|environment/i.test(d.label));
-    const target  = idxBack >= 0 ? devices[idxBack] : devices[devices.length - 1];
-
-    // Si ya estamos corriendo y NO es la cámara objetivo, cambiamos
-    const needSwitch = true; // simplificamos: siempre reiniciamos al deviceId objetivo
-    if (needSwitch) {
-      try { await lector.stop(); } catch {}
-      try { await lector.clear(); } catch {}
-      lector = new Html5Qrcode('camReader');
-      await lector.start({ deviceId: { exact: target.id } }, config, onScanSuccess, onScanError);
-      camActiva = true;
-    }
-  } catch(e) {
+    camActiva = true;
+  } catch (e) {
     console.error("Error cámara:", e);
     const msg =
-      e?.name === 'NotAllowedError'     ? "Permiso de cámara denegado. Actívalo en los permisos del navegador."
-    : e?.name === 'NotFoundError'       ? "No se encontró ninguna cámara disponible."
-    : e?.name === 'NotReadableError'    ? "La cámara está en uso por otra app."
-    : e?.name === 'OverconstrainedError'? "No se pudo abrir esa cámara. Revisa permisos."
+      e?.name === 'NotAllowedError'      ? "Permiso de cámara denegado."
+    : e?.name === 'NotFoundError'        ? "No se encontró ninguna cámara disponible."
+    : e?.name === 'NotReadableError'     ? "La cámara está en uso por otra app."
+    : e?.name === 'OverconstrainedError' ? "No se pudo abrir esa cámara. Intenta con otra."
     : (e?.message || "No se pudo abrir la cámara");
     alert(msg);
     cerrarCam();
