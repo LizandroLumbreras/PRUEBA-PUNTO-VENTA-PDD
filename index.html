@@ -226,7 +226,6 @@ body.is-ios #camReader canvas{
     <option value="">Selecciona un cliente…</option>
   </select>
 </div>
-
 <div class="field searchbox">
   <label>Buscar</label>
   <input id="buscador" type="text" placeholder="Escribe o escanea código…">
@@ -701,18 +700,18 @@ async function cargarClientes(){
 
       const cli = {
         id: d.id,
-        nombre: c.nombre || "",
-        alias: c.alias || "",
-        telefono: c.telefono || "",
-        ciudad: c.ciudad || "",
-        rfc: c.rfc || "",
+        nombre:  c.nombre  || "",
+        alias:   c.alias   || "",
+        telefono:c.telefono|| "",
+        ciudad:  c.ciudad  || "",
+        rfc:     c.rfc     || "",
         ocupa_factura: !!c.ocupa_factura,
         uso_cfdi: c.uso_cfdi || ""
       };
       clientes.push(cli);
 
       const opt = document.createElement("option");
-      opt.value = cli.id; // GUARDAMOS EL ID
+      opt.value = cli.id; // guardamos el ID (no el nombre)
       opt.textContent = cli.alias ? `${cli.nombre} (${cli.alias})` : cli.nombre;
       sel.appendChild(opt);
     });
@@ -720,18 +719,20 @@ async function cargarClientes(){
     console.log("[clientes] cargados:", clientes.length);
   } catch (e) {
     console.error("Error cargando clientes:", e);
-    alert("No pude cargar la lista de clientes (revisa conexión o permisos de Firestore).");
+    alert("No pude cargar la lista de clientes (conexión/permiso Firestore).");
   }
 }
 
-// cuando cambia el select, buscamos por ID
-elCliente.addEventListener("change", () => {
-  const id = elCliente.value;
+// al cambiar el select, fijamos el objeto seleccionado
+document.getElementById('cliente').addEventListener('change', () => {
+  const id = document.getElementById('cliente').value;
   clienteSeleccionado = clientes.find(c => c.id === id) || null;
   console.log("[cliente] seleccionado:", clienteSeleccionado);
 });
+
   
-tes(){
+// ===== Clientes ===== 
+  async function cargarClientes(){
     clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
     const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
     snap.forEach(d=>{
