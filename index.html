@@ -326,9 +326,36 @@ function openDB() {
   });
 }
 
-async function guardarVentaOffline(venta) { ... }
-async function getVentasPendientes() { ... }
-async function borrarVentaPendiente(folio) { ... }
+// Guarda / lee / borra ventas offline (implementaciones simples)
+async function guardarVentaOffline(venta) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("ventas_pendientes", "readwrite");
+    tx.objectStore("ventas_pendientes").put(venta); // requiere venta.folio
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getVentasPendientes() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("ventas_pendientes", "readonly");
+    const req = tx.objectStore("ventas_pendientes").getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function borrarVentaPendiente(folio) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("ventas_pendientes", "readwrite");
+    tx.objectStore("ventas_pendientes").delete(folio);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror = () => reject(tx.error);
+  });
+}
 
   const firebaseConfig = {
     apiKey: "AIzaSyCK5nb6u2CGRJ8AB1aPlRn54b97bdeAFeM",
