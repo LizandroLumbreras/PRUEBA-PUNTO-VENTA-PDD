@@ -413,21 +413,29 @@ const btnCerrarCam = document.getElementById('btnCerrarCam');
 let lector = null;
 
 async function abrirCam(){
+let lector = null;
+let _videoTrack = null;
+let _torchOn = false;
+
+async function abrirCam(){
   document.body.classList.add('modal-open');
   camModal.style.display = 'flex';
 
   if (lector) { try{ await lector.stop(); }catch{} }
   lector = new Html5Qrcode('camReader');
 
-  // Handlers
+  // Tamaño del recuadro de lectura (más ancho para barras)
+  const vw = Math.min(window.innerWidth, 480);
+  const qrW = Math.floor(vw * 0.9);
+  const qrH = Math.floor(qrW * 0.55); // rectangular ayuda a EAN/Code128
+
   const onScanSuccess = async (codigo) => {
     try{ await lector.stop(); }catch{}
-    lector = null;
+    lector = null; _videoTrack = null; _torchOn = false;
     camModal.style.display = 'none';
     document.body.classList.remove('modal-open');
 
     elBuscador.value = (codigo || '').trim();
-
     const hits = buscarLocal(elBuscador.value);
     if (hits.length >= 1) {
       prodSeleccionado = hits[0];
@@ -439,24 +447,59 @@ async function abrirCam(){
       elBuscador.focus();
     }
   };
-
-  const onScanError = (_err) => { /* opcional: log */ };
+  const onScanError = (_err) => { /* opcional */ };
 
   try{
-    const box = Math.floor(Math.min(window.innerWidth * 0.8, 320));
+    // Preferir BarcodeDetector nativo si existe (más rápido)
+    const useNative = ('BarcodeDetector' in window);
+
     await lector.start(
-      { facingMode: "environment" },
+      // Pedimos cámara trasera con resolución alta
       {
-        fps: 10,
-        qrbox: box,
+        facingMode: { ideal: "environment" },
+        width: { ideal: 1920 },   // HD
+        height:{ ideal: 1080 },
+        aspectRatio: { ideal: 16/9 }
+      },
+      {
+        fps: 24,
+        qrbox: { width: qrW, height: qrH },
+        aspectRatio: 1.7778,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        },
         formatsToSupport: [
           Html5QrcodeSupportedFormats.EAN_13,
           Html5QrcodeSupportedFormats.CODE_128
-        ]
+        ],
+        // Si no hay BarcodeDetector, baja el “scan throttling” interno
+        // (esta clave no es pública, pero algunos builds la respetan)
+        verbose: false
       },
       onScanSuccess,
       onScanError
     );
+
+    // Tomar el video track real para torch / focus
+    const vid = document.querySelector('#camReader video');
+    _videoTrack = vid?.srcObject?.getVideoTracks?.()[0] || null;
+
+    // Intentar activar auto-enfoque continuo
+    try{
+      const caps = _videoTrack?.getCapabilities?.() || {};
+      if (caps.focusMode && caps.focusMode.includes('continuous')) {
+        await _videoTrack.applyConstraints({ advanced:[{ focusMode:'continuous' }] });
+        document.getElementById('btnAF').style.display = 'inline-flex';
+      } else if (caps.focusMode && caps.focusMode.includes('auto')) {
+        await _videoTrack.applyConstraints({ advanced:[{ focusMode:'auto' }] });
+        document.getElementById('btnAF').style.display = 'inline-flex';
+      }
+      // Mostrar botón de linterna si el dispositivo lo permite
+      if (caps.torch) {
+        document.getElementById('btnTorch').style.display = 'inline-flex';
+      }
+    }catch(e){ /* silencioso */ }
+
   }catch(e){
     console.error('Error cámara:', e);
     alert('No se pudo abrir la cámara');
@@ -465,15 +508,37 @@ async function abrirCam(){
   }
 }
 
-
 function cerrarCam(){
   if (lector) { lector.stop().catch(()=>{}); lector = null; }
+  if (_videoTrack) { try{ _videoTrack.stop(); }catch{} _videoTrack = null; }
+  _torchOn = false;
   camModal.style.display = 'none';
   document.body.classList.remove('modal-open');
 }
 
+// Botones extra
+document.getElementById('btnTorch').addEventListener('click', async ()=>{
+  if (!_videoTrack) return;
+  try{
+    _torchOn = !_torchOn;
+    await _videoTrack.applyConstraints({ advanced:[{ torch: _torchOn }] });
+  }catch(e){ /* puede fallar si el navegador no lo soporta */ }
+});
+
+document.getElementById('btnAF').addEventListener('click', async ()=>{
+  if (!_videoTrack) return;
+  try{
+    const caps = _videoTrack.getCapabilities?.() || {};
+    if (caps.focusMode?.includes('continuous')) {
+      await _videoTrack.applyConstraints({ advanced:[{ focusMode:'continuous' }] });
+    } else if (caps.focusMode?.includes('auto')) {
+      await _videoTrack.applyConstraints({ advanced:[{ focusMode:'auto' }] });
+    }
+  }catch(e){}
+});
+
+// Abrir / cerrar
 btnCam.addEventListener('click', abrirCam);
-btnCerrarCam.addEventListener('click', cerrarCam);
 camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
 window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && camModal.style.display === 'flex') cerrarCam(); });
 
