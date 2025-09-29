@@ -540,25 +540,43 @@
       });
     }
 
-    /* ===== Clientes ===== */
-    async function cargarClientes(){
-      clientes=[]; const dl=document.getElementById("clientesList"); dl.innerHTML="";
-      const snap=await getDocs(collection(db,"rutas_venta",rutaId,"clientes"));
-      snap.forEach(d=>{
-        const c=d.data(); if(c.activo===false)return;
-        const cli={id:d.id,nombre:c.nombre||"",alias:c.alias||"",
-          telefono:c.telefono||"",ciudad:c.ciudad||"",rfc:c.rfc||"",
-          ocupa_factura:!!c.ocupa_factura,uso_cfdi:c.uso_cfdi||""};
-        clientes.push(cli);
-        const opt=document.createElement("option");
-        opt.value=cli.nombre;
-        opt.label=cli.alias?`${cli.nombre} (${cli.alias})`:cli.nombre;
-        dl.appendChild(opt);
-      });
-    }
-    elCliente.addEventListener("change",()=>{const v=normaliza(elCliente.value); clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;});
+/* ===== Clientes (colección global) ===== */
+async function cargarClientes(){
+  clientes = [];
+  const dl = document.getElementById("clientesList");
+  dl.innerHTML = "";
 
-    const priceOf=p=>Number(p.precioPublico||0);
+  const snap = await getDocs(collection(db, "clientes"));
+  snap.forEach(d => {
+    const c = d.data() || {};
+    if (c.activo === false) return;
+
+    const cli = {
+      id: d.id,
+      nombre: c.nombre || "",
+      alias: c.alias || "",
+      telefono: c.telefono || "",
+      ciudad: c.ciudad || "",
+      rfc: c.rfc || "",
+      ocupa_factura: !!c.ocupa_factura,
+      uso_cfdi: c.uso_cfdi || ""
+    };
+
+    clientes.push(cli);
+
+    const opt = document.createElement("option");
+    opt.value = cli.nombre;
+    opt.label = cli.alias ? `${cli.nombre} (${cli.alias})` : cli.nombre;
+    dl.appendChild(opt);
+  });
+}
+
+// Listener (una sola vez)
+elCliente.addEventListener("change", () => {
+  const v = normaliza(elCliente.value);
+  clienteSeleccionado = clientes.find(c => normaliza(c.nombre) === v) || null;
+});
+    const priceOf = (p) => Number(p.precioPublico || 0);
 
     /* ===== Totales ===== */
     function calcularTotalesConImpuestosIncluidos(){
@@ -1038,7 +1056,7 @@
 
         const venta={
           folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
-          cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
+          cliente:clienteTxt,cliente_id: clienteSeleccionado?.id || null,
           atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
           recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
           cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
