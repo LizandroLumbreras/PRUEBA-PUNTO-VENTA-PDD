@@ -176,18 +176,27 @@
 
 /* Impresión */
 @media print {
-  @page { size: auto; margin: 0; }
-  
-  body * { visibility: hidden !important; }
+  @page { 
+    size: auto;  /* deja que el driver elija (58mm o 80mm) */
+    margin: 0;
+  }
+
+  body * { 
+    visibility: hidden !important; 
+  }
 
   #ticketArea, #ticketArea * {
     visibility: visible !important;
   }
 
   #ticketArea {
-    position: relative;
+    position: relative !important;   /* 🚀 ya no oculto */
+    left: 0 !important;
+    top: 0 !important;
     margin: 0 auto;
     background: #fff;
+    width: 100%; 
+    max-width: 80mm;   /* o cámbialo a 58mm según tu impresora */
     padding: 2mm;
   }
 }
