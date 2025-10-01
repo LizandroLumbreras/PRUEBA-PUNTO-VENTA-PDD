@@ -528,25 +528,27 @@
         }
       };
 
-      try{
-        await lector.start(
-          { facingMode: { ideal: "environment" } },
-          { fps: 24, qrbox: { width: qrW, height: qrH }, aspectRatio: 1.7778,
-            formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128 ] },
-          onScanSuccess
-        );
-        const vid = camReaderDiv.querySelector('video');
-        _videoTrack = vid?.srcObject?.getVideoTracks?.()[0] || null;
-        const caps = _videoTrack?.getCapabilities?.() || {};
-        if (caps.torch)  btnTorch.style.display = 'inline-flex';
-        if (caps.focusMode?.includes('continuous') || caps.focusMode?.includes('auto'))
-          btnAF.style.display = 'inline-flex';
-      }catch(e){
-        alert('No se pudo abrir la cámara');
-        camModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
-      }
-    }
+try {
+  await lector.start(
+    { facingMode: "environment" },  // ✅ más compatible
+    { fps: 10, qrbox: { width: qrW, height: qrH } },
+    onScanSuccess
+  );
+
+  const vid = camReaderDiv.querySelector('video');
+  _videoTrack = vid?.srcObject?.getVideoTracks?.()[0] || null;
+
+  const caps = _videoTrack?.getCapabilities?.() || {};
+  if (caps.torch) btnTorch.style.display = 'inline-flex';
+  if (caps.focusMode?.includes('continuous') || caps.focusMode?.includes('auto'))
+    btnAF.style.display = 'inline-flex';
+
+} catch (err) {
+  alert("No se pudo abrir la cámara: " + err.message);
+  camModal.style.display = 'none';
+  document.body.classList.remove('modal-open');
+}
+
     function cerrarCam(){
       if (lector) { lector.stop().catch(()=>{}); lector = null; }
       if (_videoTrack) { try{ _videoTrack.stop(); }catch{} _videoTrack = null; }
