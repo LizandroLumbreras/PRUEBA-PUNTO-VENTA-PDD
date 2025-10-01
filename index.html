@@ -150,10 +150,12 @@
 
 .ticket {
   font-family: monospace;
-  font-size: 12px;     /* más compacto */
-  line-height: 1.2;    /* reduce espacio entre renglones */
-  width: 80mm;         /* ancho fijo de ticket */
-  max-width: 80mm;
+  font-size: 12px;
+  line-height: 1.2;
+  width: 100%;              /* que se adapte */
+  max-width: 80mm;          /* pero no pase de 80mm */
+  box-sizing: border-box;
+  margin: 0 auto;
 }
 
 .ticket img {
@@ -173,7 +175,7 @@
 /* Impresión */
 @media print {
   @page {
-    size: 80mm auto;
+    size: auto;   /* ⚡ deja que el driver de la impresora decida */
     margin: 0;
   }
   body * { visibility: hidden !important; }
@@ -181,14 +183,15 @@
     visibility: visible !important;
   }
   #ticketArea {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 80mm;
+    position: relative;
+    width: 100%;         /* ⚡ se adapta al ancho de papel */
+    max-width: 80mm;     /* si es térmica de 80mm */
+    margin: 0 auto;
     padding: 2mm;
     background: #fff;
   }
 }
+
     .ticket { font-family: monospace; font-size: 13px; }
 .t-header { text-align: center; margin: 2px 0; }
 .t-header.t-strong { font-weight: bold; }
