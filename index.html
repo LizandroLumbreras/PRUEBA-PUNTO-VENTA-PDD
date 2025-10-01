@@ -497,8 +497,12 @@ let _ultimoDocPuntero = null; // para paginación “siguiente” con Firestore 
       dl.appendChild(opt);
     });
   }
-  elCliente.addEventListener("change",()=>{const v=normaliza(elCliente.value); clienteSeleccionado=clientes.find(c=>normaliza(c.nombre)===v)||null;});
-
+ // === Selección de cliente ===
+elCliente.addEventListener("change", ()=>{ 
+  const v = normaliza(elCliente.value);
+  clienteSeleccionado = clientes.find(c=> normaliza(c.nombre) === v ) || null;
+});
+  
   const priceOf=p=>Number(p.precioPublico||0);
 
   // ===== Totales =====
@@ -774,6 +778,61 @@ async function buscarTickets(){
   }
 }
 
+function generarTicketTexto(venta){
+  // 👉 ajusta ancho según tu rollo: 32 = 58mm, 48 = 80mm
+  const ancho = 32;  
+  const center = (str) => {
+    const pad = Math.max(0, Math.floor((ancho - str.length) / 2));
+    return " ".repeat(pad) + str;
+  };
+  const padL = (str, len) => str.toString().padStart(len, " ");
+  const padR = (str, len) => str.toString().padEnd(len, " ");
+  
+  let out = "";
+
+  // ====== ENCABEZADO ======
+  out += center("La Proveedora") + "\n";
+  out += center("Ruta de Venta") + "\n";
+  out += "-".repeat(ancho) + "\n";
+  out += `Folio: ${venta.folio || "-"}\n`;
+  out += `${venta.fecha_txt || ""}\n`;
+  out += `Cliente: ${venta.cliente || "Mostrador"}\n`;
+  out += "-".repeat(ancho) + "\n";
+
+  // ====== DETALLE ======
+  (venta.detalle || []).forEach(it=>{
+    const cant = Number(it.cantidad || 0).toFixed(2);
+    const imp  = Number(it.importe  || 0).toFixed(2);
+    // formato: "2.00 x Producto........  25.00"
+    let linea = `${cant}x ${padR(it.nombre || "", 15)}`;
+    linea = linea.substring(0, ancho-8); // cortar si es muy largo
+    out += `${padR(linea, ancho-8)}${padL(imp,8)}\n`;
+  });
+
+  out += "-".repeat(ancho) + "\n";
+
+  // ====== TOTALES ======
+  out += `${padR("Subtotal:", ancho-10)}${padL(venta.subtotal.toFixed(2),10)}\n`;
+  out += `${padR("Impuestos:", ancho-10)}${padL(venta.impuestos.toFixed(2),10)}\n`;
+  out += `${padR("TOTAL:", ancho-10)}${padL(venta.total.toFixed(2),10)}\n`;
+  out += "-".repeat(ancho) + "\n";
+
+  // ====== MÉTODO Y PAGO ======
+  out += `Método: ${venta.metodo_pago}\n`;
+  if(venta.metodo_pago.toLowerCase()==="efectivo" || venta.metodo_pago.toLowerCase()==="mixto"){
+    out += `Pago: ${venta.recibido.toFixed(2)}  Cambio: ${venta.cambio.toFixed(2)}\n`;
+  }
+
+  if(venta.notas && venta.notas.trim()){
+    out += `Notas: ${venta.notas.trim()}\n`;
+  }
+
+  // ====== FOOTER ======
+  out += center("¡Gracias por su compra!") + "\n\n\n";
+
+  return out;
+}
+
 
 function renderListaTickets(){
   // paginación en memoria
@@ -922,18 +981,25 @@ if (action === 'print') cerrarReimp(); // opcional
     document.getElementById('tNotas').textContent=notasExtra.join(' · ');
   }
 
+// === Confirmar Cobro ===
 async function confirmarCobro(){
   try{
     const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
     const clienteTxt=elCliente.value||'Mostrador';
     const metodo=metodoPago.value;
     const recibido=parseFloat(montoRecibido.value||'0');
-    if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){
+
+    if((metodo==='efectivo'||metodo==='mixto') && recibido<total){
       alert('Pago insuficiente'); return;
     }
-    const cambio=Math.max(0,recibido-total);
+     const cambio=Math.max(0,recibido-total);
     const notas=(notasCobro.value||'').trim();
-
+    const folio=await getNextFolio(db);
+    const fecha=new Date();
+    const fechaTxt=fecha.toLocaleString();
+    const fecha_dia=toYYYYMMDD(fecha);
+    const ubicacion = await obtenerUbicacion();
+    
     // Validación factura
     const requiereFactura = !!(clienteSeleccionado && clienteSeleccionado.ocupa_factura);
     if (requiereFactura && (!clienteSeleccionado.rfc || !clienteSeleccionado.uso_cfdi)) {
@@ -946,17 +1012,22 @@ async function confirmarCobro(){
     const fechaTxt=fecha.toLocaleString();
     const fecha_dia=toYYYYMMDD(fecha);
     const ubicacion = await obtenerUbicacion();
-const venta={
-  folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
-  cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-  atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
-  recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-  cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
-  subtotal,impuestos,total,notas,
-  cliente_rfc: clienteSeleccionado?.rfc || null,
-  cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
-  cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
-  ubicacion: ubicacion || null,   // 👈 aquí sí va
+    // 🔹 Venta con información extendida de cliente
+    const venta={
+      folio,rutaId,
+      fecha:serverTimestamp(),
+      fecha_txt:fechaTxt,
+      fecha_dia,
+      cliente:clienteTxt,
+      cliente_id: clienteSeleccionado?.id || null,
+      atendio:ATENDIO,
+      tipo_precio:"publico",
+      metodo_pago:metodo,
+      recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
+      cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
+      subtotal,impuestos,total,
+      notas,
+      ubicacion,
   detalle:carrito.map(it=>({
     id:it.id,nombre:it.nombre,cantidad:it.cantidad,
     precio_unit:it.precioUnit,importe:it.importe
@@ -969,7 +1040,15 @@ const venta={
     await enviarTelegramVenta(venta);
 
     rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});
-    window.print();
+   
+    const ticketTxt = generarTicketTexto(venta);
+if (window.Android && window.Android.printText) {
+  window.Android.printText(ticketTxt);
+} else {
+  console.log(ticketTxt);
+  alert("Impresora no disponible, ticket en consola");
+}
+
 
     carrito=[]; render(); cerrarCobro();
   }catch(err){
