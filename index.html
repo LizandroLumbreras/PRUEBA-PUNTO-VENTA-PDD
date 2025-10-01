@@ -146,21 +146,24 @@
 
 /* Solo mostrar ticket en impresión */
 @media print {
-  body * {
-    visibility: hidden !important;
+  @page {
+    size: 80mm auto;   /* ancho fijo, alto dinámico */
+    margin: 0;         /* sin márgenes */
   }
+  body * { visibility: hidden !important; }
   #ticketArea, #ticketArea * {
     visibility: visible !important;
   }
   #ticketArea {
     position: absolute;
-    left: 0;
     top: 0;
-    width: 80mm;  /* ancho típico de impresora térmica */
-    font-size: 13px;
+    left: 0;
+    width: 80mm;
+    padding: 2mm;
     background: #fff;
   }
 }
+
     .ticket { font-family: monospace; font-size: 13px; }
 .t-header { text-align: center; margin: 2px 0; }
 .t-header.t-strong { font-weight: bold; }
@@ -702,18 +705,43 @@
     /* ================================
        Ticket de Venta
     ================================= */
-    function imprimirTicket(venta){ const t=document.getElementById('ticket');
-      t.querySelector('#tFolio').textContent='Folio: '+venta.folio; t.querySelector('#tFecha').textContent=venta.fecha_txt;
-      t.querySelector('#tAtendio').textContent=venta.atendio||ATENDIO; t.querySelector('#tCliente').textContent=venta.cliente||'Mostrador';
-      t.querySelector('#tTipo').textContent=venta.tipo_precio||'publico';
-      const factRow=document.getElementById('tFacturaRow'); factRow.style.display=venta.cliente_id && clienteSeleccionado?.ocupa_factura?'block':'none';
-      document.getElementById('tRFCRow').style.display=venta.cliente_id && clienteSeleccionado?.ocupa_factura?'block':'none';
-      document.getElementById('tCFDIRow').style.display=venta.cliente_id && clienteSeleccionado?.ocupa_factura?'block':'none';
-      const tLineas=document.getElementById('tLineas'); tLineas.innerHTML=''; (venta.productos||[]).forEach(p=>{const div=document.createElement('div'); div.className='t-row';
-        div.innerHTML=`<span class="t-desc">${p.cantidad.toFixed(2)} x ${p.nombre}</span><span class="t-imp">${money(p.importe)}</span>`; tLineas.appendChild(div);});
-      document.getElementById('tSubtotal').textContent=money(venta.subtotal); document.getElementById('tImpuestos').textContent=money(venta.impuestos); document.getElementById('tTotal').textContent=money(venta.total);
-      document.getElementById('tMetodo').textContent=venta.metodo_pago; document.getElementById('tRecibido').textContent=money(venta.recibido||0); document.getElementById('tCambio').textContent=money(venta.cambio||0);
-      document.getElementById('tNotas').textContent=venta.notas||''; window.print(); }
+function imprimirTicket(venta){ 
+  const t=document.getElementById('ticket');
+  t.querySelector('#tFolio').textContent='Folio: '+venta.folio; 
+  t.querySelector('#tFecha').textContent=venta.fecha_txt;
+  t.querySelector('#tAtendio').textContent=venta.atendio||ATENDIO; 
+  t.querySelector('#tCliente').textContent=venta.cliente||'Mostrador';
+  t.querySelector('#tTipo').textContent=venta.tipo_precio||'publico';
+
+  // ✅ Mostrar siempre los datos de facturación desde la venta
+  document.getElementById('tFacturaRow').style.display=venta.ocupa_factura?'block':'none';
+  document.getElementById('tRFCRow').style.display=venta.rfc?'block':'none';
+  document.getElementById('tCFDIRow').style.display=venta.uso_cfdi?'block':'none';
+  if(venta.rfc) document.getElementById('tRFC').textContent=venta.rfc;
+  if(venta.uso_cfdi) document.getElementById('tCFDI').textContent=venta.uso_cfdi;
+
+  const tLineas=document.getElementById('tLineas'); 
+  tLineas.innerHTML=''; 
+  (venta.productos||[]).forEach(p=>{
+    const div=document.createElement('div'); 
+    div.className='t-row';
+    div.innerHTML=`<span class="t-desc">${p.cantidad.toFixed(2)} x ${p.nombre}</span>
+                   <span class="t-imp">${money(p.importe)}</span>`; 
+    tLineas.appendChild(div);
+  });
+
+  document.getElementById('tSubtotal').textContent=money(venta.subtotal); 
+  document.getElementById('tImpuestos').textContent=money(venta.impuestos); 
+  document.getElementById('tTotal').textContent=money(venta.total);
+  document.getElementById('tMetodo').textContent=venta.metodo_pago; 
+  document.getElementById('tRecibido').textContent=money(venta.recibido||0); 
+  document.getElementById('tCambio').textContent=money(venta.cambio||0);
+  document.getElementById('tNotas').textContent=venta.notas||''; 
+
+  // ✅ ahora sí imprimir
+  window.print(); 
+}
+
 
     /* ================================
        Telegram
