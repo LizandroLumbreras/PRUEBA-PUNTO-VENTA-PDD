@@ -499,67 +499,70 @@
     let _videoTrack = null;
     let _torchOn = false;
 
-    async function abrirCam(){
-      document.body.classList.add('modal-open');
-      camModal.style.display = 'flex';
-      if (lector) { try{ await lector.stop(); }catch{} }
-      lector = new Html5Qrcode('camReader');
+async function abrirCam(){
+  document.body.classList.add('modal-open');
+  camModal.style.display = 'flex';
+  if (lector) { try{ await lector.stop(); }catch{} }
+  lector = new Html5Qrcode('camReader');
 
-      const vw = Math.min(window.innerWidth, 480);
-      const qrW = Math.floor(vw * 0.9);
-      const qrH = Math.floor(qrW * 0.55);
+  const vw = Math.min(window.innerWidth, 480);
+  const qrW = Math.floor(vw * 0.9);
+  const qrH = Math.floor(qrW * 0.55);
 
-      const onScanSuccess = async (codigo) => {
-        try{ await lector.stop(); }catch{}
-        lector = null; _videoTrack = null; _torchOn = false;
-        camModal.style.display = 'none';
-        document.body.classList.remove('modal-open');
+  const onScanSuccess = async (codigo) => {
+    try{ await lector.stop(); }catch{}
+    lector = null; _videoTrack = null; _torchOn = false;
+    camModal.style.display = 'none';
+    document.body.classList.remove('modal-open');
 
-        elBuscador.value = (codigo || '').trim();
-        const hits = buscarLocal(elBuscador.value);
-        if (hits.length >= 1) {
-          prodSeleccionado = hits[0];
-          elResultados.style.display = "none";
-          elBuscador.value = hits[0].nombre;
-          elCant.focus(); elCant.select();
-        } else {
-          pintarResultados(buscarLocal(elBuscador.value));
-          elBuscador.focus();
-        }
-      };
+    elBuscador.value = (codigo || '').trim();
+    const hits = buscarLocal(elBuscador.value);
+    if (hits.length >= 1) {
+      prodSeleccionado = hits[0];
+      elResultados.style.display = "none";
+      elBuscador.value = hits[0].nombre;
+      elCant.focus(); elCant.select();
+    } else {
+      pintarResultados(buscarLocal(elBuscador.value));
+      elBuscador.focus();
+    }
+  };
 
-try {
-  await lector.start(
-    { facingMode: "environment" },  // ✅ más compatible
-    { fps: 10, qrbox: { width: qrW, height: qrH } },
-    onScanSuccess
-  );
+  try {
+    await lector.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: qrW, height: qrH } },
+      onScanSuccess
+    );
 
-  const vid = camReaderDiv.querySelector('video');
-  _videoTrack = vid?.srcObject?.getVideoTracks?.()[0] || null;
+    const vid = camReaderDiv.querySelector('video');
+    _videoTrack = vid?.srcObject?.getVideoTracks?.[0] || null;
 
-  const caps = _videoTrack?.getCapabilities?.() || {};
-  if (caps.torch) btnTorch.style.display = 'inline-flex';
-  if (caps.focusMode?.includes('continuous') || caps.focusMode?.includes('auto'))
-    btnAF.style.display = 'inline-flex';
+    const caps = _videoTrack?.getCapabilities?.() || {};
+    if (caps.torch) btnTorch.style.display = 'inline-flex';
+    if (caps.focusMode?.includes('continuous') || caps.focusMode?.includes('auto'))
+      btnAF.style.display = 'inline-flex';
 
-} catch (err) {
-  alert("No se pudo abrir la cámara: " + err.message);
+  } catch (err) {
+    alert("No se pudo abrir la cámara: " + err.message);
+    camModal.style.display = 'none';
+    document.body.classList.remove('modal-open');
+  }
+}  // ✅ aquí CIERRA abrirCam()
+
+
+// 🚀 cerrarCam ahora está fuera
+function cerrarCam(){
+  if (lector) { lector.stop().catch(()=>{}); lector = null; }
+  if (_videoTrack) { try{ _videoTrack.stop(); }catch{} _videoTrack = null; }
+  _torchOn = false;
   camModal.style.display = 'none';
   document.body.classList.remove('modal-open');
 }
 
-    function cerrarCam(){
-      if (lector) { lector.stop().catch(()=>{}); lector = null; }
-      if (_videoTrack) { try{ _videoTrack.stop(); }catch{} _videoTrack = null; }
-      _torchOn = false;
-      camModal.style.display = 'none';
-      document.body.classList.remove('modal-open');
-     }
-    }
-    btnCam.addEventListener('click', abrirCam);
-    btnCerrarCam.addEventListener('click', cerrarCam);
-    camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
+btnCam.addEventListener('click', abrirCam);
+btnCerrarCam.addEventListener('click', cerrarCam);
+camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam(); });
 
     /* ================================
        Catálogo y Clientes
