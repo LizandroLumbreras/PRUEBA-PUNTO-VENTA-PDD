@@ -140,17 +140,40 @@
   margin-bottom: 8px;
 }
     /* Ticket solo visible en impresión */
+/* Ticket */
 #ticketArea {
-  display: block;       /* siempre visible para el navegador */
-  position: absolute;   /* lo sacamos de la vista */
-  left: -9999px;
+  display: block;
+  position: absolute;
+  left: -9999px; /* oculto fuera de pantalla */
   top: -9999px;
 }
 
-/* Solo mostrar ticket en impresión */
+.ticket {
+  font-family: monospace;
+  font-size: 12px;     /* más compacto */
+  line-height: 1.2;    /* reduce espacio entre renglones */
+  width: 80mm;         /* ancho fijo de ticket */
+  max-width: 80mm;
+}
+
+.ticket img {
+  max-width: 60mm;     /* controla el tamaño del logo */
+  height: auto;
+  display: block;
+  margin: 0 auto 5px auto; /* centrado y con margen abajo */
+}
+
+.t-header { text-align: center; margin: 2px 0; }
+.t-header.t-strong { font-weight: bold; }
+.t-core { font-size: 11px; margin: 1px 0; }
+.t-thanks { text-align: center; margin-top: 6px; font-style: italic; }
+.t-row { display:flex; justify-content:space-between; }
+.t-imp { min-width:60px; text-align:right; }
+
+/* Impresión */
 @media print {
   @page {
-    size: 80mm auto;   /* ancho fijo ticket */
+    size: 80mm auto;
     margin: 0;
   }
   body * { visibility: hidden !important; }
@@ -166,7 +189,6 @@
     background: #fff;
   }
 }
-
     .ticket { font-family: monospace; font-size: 13px; }
 .t-header { text-align: center; margin: 2px 0; }
 .t-header.t-strong { font-weight: bold; }
