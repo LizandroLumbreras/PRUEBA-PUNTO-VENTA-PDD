@@ -141,14 +141,17 @@
 }
     /* Ticket solo visible en impresión */
 #ticketArea {
-  display: none;
+  display: block;       /* siempre visible para el navegador */
+  position: absolute;   /* lo sacamos de la vista */
+  left: -9999px;
+  top: -9999px;
 }
 
 /* Solo mostrar ticket en impresión */
 @media print {
   @page {
-    size: 80mm auto;   /* ancho fijo, alto dinámico */
-    margin: 0;         /* sin márgenes */
+    size: 80mm auto;   /* ancho fijo ticket */
+    margin: 0;
   }
   body * { visibility: hidden !important; }
   #ticketArea, #ticketArea * {
