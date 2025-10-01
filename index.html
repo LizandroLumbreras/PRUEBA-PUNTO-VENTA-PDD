@@ -148,23 +148,25 @@
   top: -9999px;
 }
 
+/* Ticket base */
 .ticket {
   font-family: monospace;
-  font-size: 12px;
   line-height: 1.2;
-  width: 100%;              /* que se adapte */
-  max-width: 80mm;          /* pero no pase de 80mm */
-  box-sizing: border-box;
+  width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
 }
+
+/* Diferentes anchos */
+.ticket58 { max-width: 58mm; font-size: 11px; }
+.ticket80 { max-width: 80mm; font-size: 13px; }
 
 .ticket img {
-  max-width: 60mm;     /* controla el tamaño del logo */
+  max-width: 90%;  /* evita que se corte */
   height: auto;
   display: block;
-  margin: 0 auto 5px auto; /* centrado y con margen abajo */
+  margin: 0 auto 5px;
 }
-
 .t-header { text-align: center; margin: 2px 0; }
 .t-header.t-strong { font-weight: bold; }
 .t-core { font-size: 11px; margin: 1px 0; }
@@ -174,21 +176,19 @@
 
 /* Impresión */
 @media print {
-  @page {
-    size: auto;   /* ⚡ deja que el driver de la impresora decida */
-    margin: 0;
-  }
+  @page { size: auto; margin: 0; }
+  
   body * { visibility: hidden !important; }
+
   #ticketArea, #ticketArea * {
     visibility: visible !important;
   }
+
   #ticketArea {
     position: relative;
-    width: 100%;         /* ⚡ se adapta al ancho de papel */
-    max-width: 80mm;     /* si es térmica de 80mm */
     margin: 0 auto;
-    padding: 2mm;
     background: #fff;
+    padding: 2mm;
   }
 }
 
@@ -741,25 +741,30 @@ camModal.addEventListener('click', (e)=>{ if(e.target === camModal) cerrarCam();
     ================================= */
 function imprimirTicket(venta){ 
   const t=document.getElementById('ticket');
+
+  // Limpiamos clases previas
+  t.classList.remove("ticket58","ticket80");
+
+  // ⚡ Detectar o asignar ancho
+  if (window.innerWidth < 400) {
+    t.classList.add("ticket58");
+  } else {
+    t.classList.add("ticket80");
+  }
+
+  // Rellenar datos del ticket...
   t.querySelector('#tFolio').textContent='Folio: '+venta.folio; 
   t.querySelector('#tFecha').textContent=venta.fecha_txt;
   t.querySelector('#tAtendio').textContent=venta.atendio||ATENDIO; 
   t.querySelector('#tCliente').textContent=venta.cliente||'Mostrador';
   t.querySelector('#tTipo').textContent=venta.tipo_precio||'publico';
 
-  // ✅ Mostrar siempre los datos de facturación desde la venta
-  document.getElementById('tFacturaRow').style.display=venta.ocupa_factura?'block':'none';
-  document.getElementById('tRFCRow').style.display=venta.rfc?'block':'none';
-  document.getElementById('tCFDIRow').style.display=venta.uso_cfdi?'block':'none';
-  if(venta.rfc) document.getElementById('tRFC').textContent=venta.rfc;
-  if(venta.uso_cfdi) document.getElementById('tCFDI').textContent=venta.uso_cfdi;
-
   const tLineas=document.getElementById('tLineas'); 
   tLineas.innerHTML=''; 
   (venta.productos||[]).forEach(p=>{
     const div=document.createElement('div'); 
     div.className='t-row';
-    div.innerHTML=`<span class="t-desc">${p.cantidad.toFixed(2)} x ${p.nombre}</span>
+    div.innerHTML=`<span>${p.cantidad.toFixed(2)} x ${p.nombre}</span>
                    <span class="t-imp">${money(p.importe)}</span>`; 
     tLineas.appendChild(div);
   });
@@ -772,7 +777,8 @@ function imprimirTicket(venta){
   document.getElementById('tCambio').textContent=money(venta.cambio||0);
   document.getElementById('tNotas').textContent=venta.notas||''; 
 
-  // ✅ ahora sí imprimir
+  // ⚡ Mostrar ticket y mandar a imprimir
+  document.getElementById('ticketArea').style.display="block";
   window.print(); 
 }
 
