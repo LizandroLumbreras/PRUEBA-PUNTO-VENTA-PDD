@@ -144,20 +144,23 @@
   display: none;
 }
 
+/* Solo mostrar ticket en impresión */
 @media print {
+  body * {
+    visibility: hidden !important;
+  }
+  #ticketArea, #ticketArea * {
+    visibility: visible !important;
+  }
   #ticketArea {
-    display: block;
-    width: 80mm;   /* ancho típico impresora térmica */
-    margin: 0 auto;
     position: absolute;
     left: 0;
     top: 0;
-  }
-  #ticketArea, #ticketArea * {
-    visibility: visible;
+    width: 80mm;  /* ancho típico de impresora térmica */
+    font-size: 13px;
+    background: #fff;
   }
 }
-
     .ticket { font-family: monospace; font-size: 13px; }
 .t-header { text-align: center; margin: 2px 0; }
 .t-header.t-strong { font-weight: bold; }
