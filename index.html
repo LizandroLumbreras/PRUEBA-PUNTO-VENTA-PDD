@@ -299,7 +299,6 @@
   </div>
   
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -956,7 +955,8 @@ const venta={
     // 👉 Telegram aquí
     await enviarTelegramVenta(venta);
 
-   await imprimirPDFVenta(venta);
+    rellenarTicket(venta);
+    window.print();
 
     carrito=[]; render(); cerrarCobro();
   }catch(err){
@@ -964,53 +964,6 @@ const venta={
     alert('Error guardando venta');
   }
 }
-  async function imprimirPDFVenta(venta) {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({
-    unit: "mm",
-    format: [72, 200], // 72mm de ancho (ticket térmico)
-  });
-
-  let y = 10;
-
-  doc.setFontSize(10);
-  doc.text("La Proveedora", 5, y); y += 5;
-  doc.text("Ruta de Venta", 5, y); y += 5;
-  doc.text("-------------------------", 5, y); y += 5;
-
-  doc.text(`Folio: ${venta.folio}`, 5, y); y += 5;
-  doc.text(`Fecha: ${venta.fecha_txt}`, 5, y); y += 5;
-  doc.text(`Cliente: ${venta.cliente}`, 5, y); y += 5;
-  doc.text("-------------------------", 5, y); y += 5;
-
-  // detalle de productos
-  venta.detalle.forEach(it => {
-    doc.text(`${it.cantidad} x ${it.nombre}`, 5, y);
-    doc.text(`$${it.importe.toFixed(2)}`, 55, y, { align: "right" });
-    y += 5;
-  });
-
-  doc.text("-------------------------", 5, y); y += 5;
-
-  doc.text(`Subtotal: $${venta.subtotal.toFixed(2)}`, 5, y); y += 5;
-  doc.text(`Impuestos: $${venta.impuestos.toFixed(2)}`, 5, y); y += 5;
-  doc.setFontSize(12);
-  doc.text(`TOTAL: $${venta.total.toFixed(2)}`, 5, y); y += 8;
-  doc.setFontSize(10);
-
-  doc.text(`Método: ${venta.metodo_pago}`, 5, y); y += 5;
-  if (venta.metodo_pago === 'efectivo' || venta.metodo_pago === 'mixto') {
-    doc.text(`Pago: $${venta.recibido}  Cambio: $${venta.cambio}`, 5, y); y += 5;
-  }
-
-  doc.text("-------------------------", 5, y); y += 5;
-  doc.text("¡Gracias por su compra!", 5, y);
-
-  // abrir PDF y mandar a imprimir
-  doc.autoPrint();
-  window.open(doc.output("bloburl"), "_blank");
-}
-
 async function calcularResumenDeDia(dateStr){
   const [Y,M,D]=dateStr.split('-').map(Number);
   const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
