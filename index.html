@@ -90,31 +90,145 @@
     .modal-b input,.modal-b select{ padding:10px; border-radius:10px; border:1px solid #e1e5ea; }
     body.modal-open{ overflow:hidden; }
 
-    /* ===== IMPRESIÓN DEL TICKET ===== */
-    #ticketArea{ display:none; }
-    @media print{
-      :root{ --ticket-mm:72; --ticket-pad-mm:1; --ticket-font:18px; --line-height:1.08; }
-      @page{ size: calc(var(--ticket-mm) * 1mm) auto; margin:0; }
-      html,body{ background:#fff!important; height:auto!important; width:calc(var(--ticket-mm) * 1mm); margin:0!important; padding:0!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      body *{ visibility:hidden!important; }
-      #ticketArea, #ticketArea *{ visibility:visible!important; }
-      #ticketArea{ position:fixed; inset:0; display:block!important; background:#fff!important; padding:0; margin:0; z-index:99999; }
-      #tTipoRow{ display:none !important; }
-      .ticket{ width:calc(var(--ticket-mm) * 1mm); margin:0 auto; padding:0 calc(var(--ticket-pad-mm) * 1mm); box-sizing:border-box; font:var(--ticket-font)/var(--line-height) 'Poppins',system-ui,sans-serif; color:#000; text-align:left; overflow:hidden; }
-      .ticket .t-header{ text-align:center; margin:2px 0; }
-      .ticket img{ display:inline-block; max-width:100%; height:auto; }
-      .ticket hr{ border:none; border-top:1px dashed #999; margin:6px 0; }
-      .ticket .t-row{ display:flex!important; justify-content:space-between; align-items:center; gap:6px; white-space:nowrap!important; margin:2px 0; }
-      .ticket .t-desc{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap!important; text-align:left; }
-      .ticket .t-imp{ flex:0 0 auto; text-align:right; margin-left:8px; white-space:nowrap!important; }
-      .ticket .t-totals{ text-align:right; }
-      .ticket .t-totals .row{ display:flex; justify-content:flex-end; gap:10px; }
-      .ticket .t-thanks{ text-align:center; margin-top:8px; }
-      .ticket .t-strong{ font-size: calc(var(--ticket-font) + 2px); }
-      .ticket .t-header img{ max-width:142px!important; }
-      .ticket .t-header.biz{ font-size: calc(var(--ticket-font) - 3px); }
-      .ticket .t-core,.ticket .t-core *{ font-size: calc(var(--ticket-font) - 3px); }
-    }
+/* =========================
+   IMPRESIÓN DE TICKET
+   ========================= */
+#ticketArea { 
+  display: none; 
+}
+
+@media print {
+  /* Variables para ajustar ancho, tipografía y espaciado */
+  :root {
+    --ticket-mm: 72;             /* ancho en milímetros */
+    --ticket-pad-mm: 1;          /* padding lateral */
+    --ticket-font: 18px;         /* tamaño base */
+    --line-height: 1.08;         /* interlineado */
+  }
+
+  /* Configuración de página */
+  @page { 
+    size: calc(var(--ticket-mm) * 1mm) auto; 
+    margin: 0; 
+  }
+
+  /* Reset para impresión */
+  html, body {
+    background: #fff !important;
+    height: auto !important;
+    width: calc(var(--ticket-mm) * 1mm);
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Ocultar todo excepto el ticket */
+  body * { 
+    visibility: hidden !important; 
+  }
+  #ticketArea, 
+  #ticketArea * { 
+    visibility: visible !important; 
+  }
+
+  /* Mostrar solo el área del ticket */
+  #ticketArea {
+    position: fixed;
+    inset: 0;
+    display: block !important;
+    background: #fff !important;
+    padding: 0;
+    margin: 0;
+    z-index: 99999;
+  }
+
+  /* Ajustes de estilo del ticket */
+  .ticket {
+    width: calc(var(--ticket-mm) * 1mm);
+    margin: 0 auto;
+    padding: 0 calc(var(--ticket-pad-mm) * 1mm);
+    box-sizing: border-box;
+    font: var(--ticket-font)/var(--line-height) 'Poppins', system-ui, sans-serif;
+    color: #000;
+    text-align: left;
+    overflow: hidden;
+  }
+
+  /* Encabezado */
+  .ticket .t-header { 
+    text-align: center; 
+    margin: 2px 0; 
+  }
+  .ticket .t-header img { 
+    max-width: 142px !important; 
+    height: auto; 
+    display: inline-block; 
+  }
+  .ticket .t-header.biz { 
+    font-size: calc(var(--ticket-font) - 3px); 
+  }
+
+  /* Separador */
+  .ticket hr { 
+    border: none; 
+    border-top: 1px dashed #999; 
+    margin: 6px 0; 
+  }
+
+  /* Filas del detalle */
+  .ticket .t-row {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap !important;
+    margin: 2px 0;
+  }
+  .ticket .t-desc {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap !important;
+    text-align: left;
+  }
+  .ticket .t-imp {
+    flex: 0 0 auto;
+    text-align: right;
+    margin-left: 8px;
+    white-space: nowrap !important;
+  }
+
+  /* Totales */
+  .ticket .t-totals { 
+    text-align: right; 
+  }
+  .ticket .t-totals .row {
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 10px; 
+  }
+
+  /* Estilos de énfasis */
+  .ticket .t-thanks { 
+    text-align: center; 
+    margin-top: 8px; 
+  }
+  .ticket .t-strong { 
+    font-size: calc(var(--ticket-font) + 2px); 
+  }
+  .ticket .t-core, 
+  .ticket .t-core * { 
+    font-size: calc(var(--ticket-font) - 3px); 
+  }
+
+  /* Ocultar fila de tipo de precio */
+  #tTipoRow { 
+    display: none !important; 
+  }
+}
+
     .searchbox{ position:relative; }
 .cam-btn{
   position:absolute; right:14px; top:50%; transform:translateY(-50%);
@@ -705,7 +819,7 @@ btnBuscarTickets.addEventListener('click', ()=>{ _pagina=1; buscarTickets(); });
 function rellenarTicket(venta){
   // Encabezados
   document.getElementById('tFolio').textContent = `Folio: ${venta.folio}`;
-  document.getElementById('tFecha').textContent = venta.fechaTxt;
+  document.getElementById('tFecha').textContent = venta.fecha_txt || '';
   document.getElementById('tAtendio').textContent = venta.atendio || ATENDIO;
   
   // Cliente
@@ -848,7 +962,7 @@ function renderListaTickets(){
         </div>
         <div style="text-align:right;">
           <div><b>Total:</b> ${money(t.total)}</div>
-          <div><small>Método: ${t.metodo?.toUpperCase()}</small></div>
+          <div><small>Método: ${t.metodo_pago?.toUpperCase() || '—'}</small></div>
         </div>
       </div>
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
@@ -894,17 +1008,51 @@ if (action === 'print') cerrarReimp(); // opcional
   }
 async function guardarVentaEnFirestore(venta) {
   try {
-    // 🔹 Limpieza: quita undefined (Firestore no lo soporta)
+    // 🔹 Validación mínima
+    if (!venta || typeof venta !== "object") {
+      throw new Error("Venta inválida: no es un objeto");
+    }
+    if (!venta.folio || !venta.detalle || venta.detalle.length === 0) {
+      throw new Error("Venta incompleta: falta folio o detalle");
+    }
+
+    // 🔹 Limpieza: elimina undefined / funciones
     const ventaLimpia = JSON.parse(JSON.stringify(venta));
 
-    const ref = collection(db, 'rutas_venta', rutaId, 'ventas');
+    // 🔹 Validar que no se guardó solo el serverTimestamp()
+    if (Object.keys(ventaLimpia).length < 3) {
+      throw new Error("Venta sospechosa: datos insuficientes");
+    }
+
+    // Guardar en Firestore
+    const ref = collection(db, "rutas_venta", rutaId, "ventas");
     const docRef = await addDoc(ref, ventaLimpia);
+
+    console.log("✅ Venta guardada en Firestore:", docRef.id);
     return docRef.id;
+
   } catch (err) {
-    console.error("Error guardando venta en Firestore:", err);
-    await guardarVentaOffline(venta); // fallback en IndexedDB
+    console.error("❌ Error guardando venta en Firestore:", err);
+
+    // fallback: IndexedDB
+    try {
+      await guardarVentaOffline(venta);
+      console.log("💾 Guardada en IndexedDB para reintento offline");
+    } catch (e2) {
+      console.error("❌ También falló guardar en IndexedDB:", e2);
+    }
+
     return null;
   }
+}
+async function guardarVentaOffline(venta) {
+  const db = await openLocalDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('ventasPendientes', 'readwrite');
+    tx.objectStore('ventasPendientes').put(venta);
+    tx.oncomplete = () => resolve(true);
+    tx.onerror    = () => reject(tx.error);
+  });
 }
 
 // Ahora sí arranca confirmarCobro()
@@ -914,9 +1062,13 @@ async function confirmarCobro(){
     const clienteTxt=elCliente.value||'Mostrador';
     const metodo=metodoPago.value;
     const recibido=parseFloat(montoRecibido.value||'0');
-    if((metodo==='efectivo'||metodo==='mixto')&&recibido<total){
-      alert('Pago insuficiente'); return;
+    
+    // Validar pago en efectivo/mixto
+    if((metodo==='efectivo'||metodo==='mixto') && recibido<total){
+      alert('Pago insuficiente'); 
+      return;
     }
+
     const cambio=Math.max(0,recibido-total);
     const notas=(notasCobro.value||'').trim();
 
@@ -927,43 +1079,68 @@ async function confirmarCobro(){
       return;
     }
 
-    
-    const folio=await getNextFolio(db);
-    const fecha=new Date();
-    const fechaTxt=fecha.toLocaleString();
-    const fecha_dia=toYYYYMMDD(fecha);
+    // Datos de fecha y ubicación
+    const folio     = await getNextFolio(db);
+    const fecha     = new Date();
+    const fechaTxt  = fecha.toLocaleString();
+    const fecha_dia = toYYYYMMDD(fecha);
     const ubicacion = await obtenerUbicacion();
-const venta={
-  folio,rutaId,fecha:serverTimestamp(),fecha_txt:fechaTxt,fecha_dia,
-  cliente:clienteTxt,cliente_info:clienteSeleccionado||null,
-  atendio:ATENDIO,tipo_precio:"publico",metodo_pago:metodo,
-  recibido:(metodo==='efectivo'||metodo==='mixto')?recibido:0,
-  cambio:(metodo==='efectivo'||metodo==='mixto')?cambio:0,
-  subtotal,impuestos,total,notas,
-  cliente_rfc: clienteSeleccionado?.rfc || null,
-  cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
-  cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
-  ubicacion: ubicacion || null,   // 👈 aquí sí va
-  detalle:carrito.map(it=>({
-    id:it.id,nombre:it.nombre,cantidad:it.cantidad,
-    precio_unit:it.precioUnit,importe:it.importe
-  }))
-};
 
-    const docId=await guardarVentaEnFirestore(venta);
+    // Objeto venta con serverTimestamp SOLO en Firestore
+    const venta = {
+      folio,
+      rutaId,
+      fecha: serverTimestamp(), // en Firestore se guardará como timestamp real
+      fecha_txt: fechaTxt,
+      fecha_dia,
+      cliente: clienteTxt,
+      cliente_info: clienteSeleccionado || null,
+      atendio: ATENDIO,
+      tipo_precio: "publico",
+      metodo_pago: metodo,
+      recibido: (metodo==='efectivo'||metodo==='mixto') ? recibido : 0,
+      cambio:   (metodo==='efectivo'||metodo==='mixto') ? cambio   : 0,
+      subtotal,
+      impuestos,
+      total,
+      notas,
+      cliente_rfc: clienteSeleccionado?.rfc || null,
+      cliente_uso_cfdi: clienteSeleccionado?.uso_cfdi || null,
+      cliente_ocupa_factura: !!clienteSeleccionado?.ocupa_factura,
+      ubicacion: ubicacion || null,
+      detalle: carrito.map(it=>({
+        id: it.id,
+        nombre: it.nombre,
+        cantidad: it.cantidad,
+        precio_unit: it.precioUnit,
+        importe: it.importe
+      }))
+    };
 
-    // 👉 Telegram aquí
-    await enviarTelegramVenta(venta);
+    // Guardar en Firestore
+    const docId = await guardarVentaEnFirestore(venta);
 
-    rellenarTicket(venta);
+    // Copia local para imprimir / Telegram (ya con fecha real)
+    const ventaLocal = { ...venta, fecha: fecha };
+
+    // Telegram
+    await enviarTelegramVenta(ventaLocal);
+
+    // Ticket en pantalla/impresión
+    rellenarTicket(ventaLocal);
     window.print();
 
-    carrito=[]; render(); cerrarCobro();
-  }catch(err){
-    console.error(err);
+    // Limpiar carrito
+    carrito=[]; 
+    render(); 
+    cerrarCobro();
+
+  } catch(err){
+    console.error("Error en confirmarCobro:", err);
     alert('Error guardando venta');
   }
 }
+
 async function calcularResumenDeDia(dateStr){
   const [Y,M,D]=dateStr.split('-').map(Number);
   const start=new Date(Y,M-1,D,0,0,0,0), end=new Date(Y,M-1,D,23,59,59,999);
