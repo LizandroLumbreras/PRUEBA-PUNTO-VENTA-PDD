@@ -1218,10 +1218,12 @@ async function enviarTelegramVenta(venta) {
   document.getElementById('btnConfirmarCobro').onclick=confirmarCobro;
   document.getElementById('btnCorte').onclick=corteDelDia;
 
-await cargarCatalogoDesdeFirestore(); 
-await cargarClientes(); 
-render();
+  // Ejecutar inicialización
+  (async ()=>{
+    await cargarCatalogoDesdeFirestore(); 
+    await cargarClientes(); 
+    render();
+  })();
 </script>
 </body>
 </html>
-
