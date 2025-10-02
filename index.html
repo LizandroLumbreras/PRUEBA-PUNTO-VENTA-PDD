@@ -1016,13 +1016,8 @@ async function guardarVentaEnFirestore(venta) {
       throw new Error("Venta incompleta: falta folio o detalle");
     }
 
-    // 🔹 Limpieza: elimina undefined / funciones
-    const ventaLimpia = JSON.parse(JSON.stringify(venta));
-
-    // 🔹 Validar que no se guardó solo el serverTimestamp()
-    if (Object.keys(ventaLimpia).length < 3) {
-      throw new Error("Venta sospechosa: datos insuficientes");
-    }
+    // 🔹 Limpieza sin romper serverTimestamp
+    const ventaLimpia = structuredClone(venta);
 
     // Guardar en Firestore
     const ref = collection(db, "rutas_venta", rutaId, "ventas");
@@ -1045,6 +1040,7 @@ async function guardarVentaEnFirestore(venta) {
     return null;
   }
 }
+
 async function guardarVentaOffline(venta) {
   const db = await openLocalDB();
   return new Promise((resolve, reject) => {
