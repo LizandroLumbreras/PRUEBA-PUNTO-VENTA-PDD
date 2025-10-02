@@ -946,10 +946,12 @@ if (action === 'print') cerrarReimp(); // opcional
     const notasExtra=[];
     if(notas && notas.trim()) notasExtra.push(`Notas: ${notas.trim()}`);
     document.getElementById('tNotas').textContent=notasExtra.join(' · ');
-  }
+}   // 👈 AQUÍ cierra rellenarTicket()
 
+// ==========================================
+// Ahora sí arranca confirmarCobro()
 async function confirmarCobro(){
-  try{
+  try {
     const {subtotal,impuestos,total}=calcularTotalesConImpuestosIncluidos();
     const clienteTxt=elCliente.value||'Mostrador';
     const metodo=metodoPago.value;
@@ -966,6 +968,7 @@ async function confirmarCobro(){
       alert('Este cliente solicita factura. Falta RFC y/o Uso de CFDI en su registro.');
       return;
     }
+
     
     const folio=await getNextFolio(db);
     const fecha=new Date();
