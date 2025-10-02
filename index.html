@@ -98,14 +98,18 @@
 }
 
 @media print {
-  .ticket {
-    font-family: monospace !important;
-    font-size: 12px;
-    line-height: 1.2;
-    white-space: pre;
+  #ticketArea {
+    display: block !important;
+  }
+
+  body * { 
+    visibility: hidden !important; 
+  }
+  #ticketArea, 
+  #ticketArea * { 
+    visibility: visible !important; 
   }
 }
-
 
   /* Configuración de página */
   @page { 
