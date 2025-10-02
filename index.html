@@ -726,15 +726,18 @@ function rellenarTicket(venta){
   document.getElementById('tImpuestos').textContent = money(venta.impuestos||0);
   document.getElementById('tTotal').textContent     = money(venta.total||0);
 
-  // Método y cambio
-  document.getElementById('tMetodo').textContent = venta.metodo.toUpperCase();
-  if(venta.metodo==='efectivo'||venta.metodo==='mixto'){
-    document.getElementById('tRecibidoRow').style.display='block';
-    document.getElementById('tRecibido').textContent=money(venta.recibido);
-    document.getElementById('tCambio').textContent=money(venta.cambio);
-  }else{
-    document.getElementById('tRecibidoRow').style.display='none';
-  }
+ // Método y cambio
+const metodo = venta.metodo_pago || "—";
+document.getElementById('tMetodo').textContent = metodo.toUpperCase();
+
+if (metodo === 'efectivo' || metodo === 'mixto') {
+  document.getElementById('tRecibidoRow').style.display = 'block';
+  document.getElementById('tRecibido').textContent = money(venta.recibido || 0);
+  document.getElementById('tCambio').textContent   = money(venta.cambio || 0);
+} else {
+  document.getElementById('tRecibidoRow').style.display = 'none';
+}
+
 
   // Notas
   document.getElementById('tNotas').textContent = venta.notas||'';
@@ -786,7 +789,7 @@ async function buscarTickets(){
         cliente: v.cliente || '',
         fecha_txt: v.fecha_txt || '',
         total: Number(v.total||0),
-        metodo: v.metodo_pago || '',
+        metodo_pago: v.metodo_pago || '',
         detalle: v.detalle || [],
         atendio: v.atendio || '',
         subtotal: Number(v.subtotal||0),
