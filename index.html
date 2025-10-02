@@ -865,6 +865,7 @@ async function reimprimirVentaPorId(docId, imprimir=true){
     if(!snap.exists()){ alert('No se encontró el ticket.'); return; }
     const venta = snap.data();
 
+    venta.fecha_txt = venta.fecha_txt || (venta.fecha?.toDate?.().toLocaleString() || '');
     venta.detalle   = venta.detalle || [];
     venta.total     = Number(venta.total||0);
     venta.subtotal  = Number(venta.subtotal||0);
@@ -1246,6 +1247,7 @@ async function generarCorteParaDia(dateStr){
   // ===== Guardar en el MISMO doc del corte =====
   const corteRef = doc(db, 'rutas_venta', rutaId, 'cortes', dateStr);
   await setDoc(corteRef, {
+    folio_corte: folioCorte,
     fecha_dia: dateStr,
     total: totGlobal,                 // total del día
     subtotal_dia: subtotalDia,        // nuevo
