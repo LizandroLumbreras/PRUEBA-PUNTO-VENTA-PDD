@@ -98,18 +98,14 @@
 }
 
 @media print {
-  #ticketArea {
-    display: block !important;
-  }
-
-  body * { 
-    visibility: hidden !important; 
-  }
-  #ticketArea, 
-  #ticketArea * { 
-    visibility: visible !important; 
-  }
+  /* Variables para ajustar ancho, tipografía y espaciado */
+  :root {
+  --ticket-mm: 72;      
+  --ticket-pad-mm: 1;   
+  --ticket-font: 18px;  
+  --line-height: 1.3;   /* 👈 sube a 1.3 o incluso 1.35 */
 }
+
 
   /* Configuración de página */
   @page { 
@@ -833,15 +829,12 @@ function rellenarTicket(venta){
   // Detalle
   const tLineas=document.getElementById('tLineas');
   tLineas.innerHTML='';
-(venta.detalle || []).forEach(it => {
-  let linea = `${it.cantidad.toFixed(2)} ${it.nombre}`;
-  linea = linea.padEnd(24, " "); 
-  const imp = money(it.importe).padStart(8, " ");
-  const fila = document.createElement("div");
-  fila.textContent = linea + imp;
-  document.getElementById("tLineas").appendChild(fila);
-});
-
+  (venta.detalle||[]).forEach(it=>{
+    const fila=document.createElement('div');
+    fila.className='t-row';
+    fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`;
+    tLineas.appendChild(fila);
+  });
 
   // Totales
   document.getElementById('tSubtotal').textContent  = money(venta.subtotal||0);
@@ -1117,8 +1110,8 @@ async function confirmarCobro(){
     await enviarTelegramVenta(ventaLocal);
 
     // Ticket en pantalla/impresión
-   rellenarTicket(ventaLocal);
-window.print();
+    rellenarTicket(ventaLocal);
+    window.print();
 
     // Limpiar carrito
     carrito=[]; 
