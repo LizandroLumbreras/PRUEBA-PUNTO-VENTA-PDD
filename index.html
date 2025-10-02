@@ -880,22 +880,6 @@ if (action === 'print') cerrarReimp(); // opcional
   }
   async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas'); const docRef=await addDoc(col,payload); return docRef.id;}
 
-  // ===== Ticket =====
-rellenarTicket({
-  folio,
-  fechaTxt,
-  clienteTxt,
-  metodo,
-  recibido,
-  cambio,
-  notas,
-  detalle: venta.detalle,   // 👈 ahora sí mandamos el detalle
-  subtotal,
-  impuestos,
-  total
-});
-window.print();
-
     // Encabezados
     document.getElementById('tFolio').textContent=`Folio: ${folio}`;
     document.getElementById('tFecha').textContent=fechaTxt;
