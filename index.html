@@ -322,17 +322,28 @@ function openLocalDB() {
     request.onerror  = () => reject(request.error);
   });
 }
+// ===== Sincronizar ventas pendientes =====
+async function sincronizarVentasPendientes() {
+  try {
+    const pendientes = await getVentasPendientes();
+    if (pendientes.length === 0) return;
 
-async function guardarVentaOffline(venta) {
-  const db = await openLocalDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('ventasPendientes', 'readwrite');
-    tx.objectStore('ventasPendientes').put(venta);
-    tx.oncomplete = () => resolve(true);
-    tx.onerror    = () => reject(tx.error);
-  });
+    console.log(`🔄 Encontradas ${pendientes.length} ventas pendientes. Intentando sincronizar...`);
+
+    for (const venta of pendientes) {
+      try {
+        const ref = collection(db, 'rutas_venta', rutaId, 'ventas');
+        await addDoc(ref, venta);                // Guardar en Firestore
+        await borrarVentaPendiente(venta.folio); // Eliminar de IndexedDB
+        console.log(`✅ Venta ${venta.folio} sincronizada`);
+      } catch (err) {
+        console.error(`❌ Error al subir venta ${venta.folio}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error("Error al sincronizar ventas pendientes:", err);
+  }
 }
-
 async function getVentasPendientes() {
   const db = await openLocalDB();
   return new Promise((resolve, reject) => {
@@ -695,10 +706,10 @@ function rellenarTicket(venta){
   // Encabezados
   document.getElementById('tFolio').textContent = `Folio: ${venta.folio}`;
   document.getElementById('tFecha').textContent = venta.fechaTxt;
-  document.getElementById('tAtendio').textContent = ATENDIO;
-
+  document.getElementById('tAtendio').textContent = venta.atendio || ATENDIO;
+  
   // Cliente
-  document.getElementById('tCliente').textContent = `Cliente: ${venta.clienteTxt}`;
+ document.getElementById('tCliente').textContent = `Cliente: ${venta.cliente || 'Mostrador'}`;
 
   // Detalle
   const tLineas=document.getElementById('tLineas');
@@ -878,6 +889,17 @@ if (action === 'print') cerrarReimp(); // opcional
     const folio=await runTransaction(db,async(tx)=>{const snap=await tx.get(ref); if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1;} const actual=Number(snap.data().valor||0)+1; tx.update(ref,{valor:actual,actualizado:serverTimestamp()}); return actual;});
     return `RV-${String(folio).padStart(6,'0')}`;
   }
+  async function guardarVentaEnFirestore(venta) {
+  try {
+    const ref = collection(db, 'rutas_venta', rutaId, 'ventas');
+    const docRef = await addDoc(ref, venta);
+    return docRef.id;
+  } catch (err) {
+    console.error("Error guardando venta en Firestore:", err);
+    await guardarVentaOffline(venta); // fallback en IndexedDB si no hay conexión
+    return null;
+  }
+}
 // Ahora sí arranca confirmarCobro()
 async function confirmarCobro(){
   try {
@@ -926,7 +948,7 @@ const venta={
     // 👉 Telegram aquí
     await enviarTelegramVenta(venta);
 
-    rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas});
+    rellenarTicket(venta);
     window.print();
 
     carrito=[]; render(); cerrarCobro();
@@ -1126,12 +1148,16 @@ async function enviarTelegramVenta(venta) {
   document.getElementById('btnConfirmarCobro').onclick=confirmarCobro;
   document.getElementById('btnCorte').onclick=corteDelDia;
 
-  // Ejecutar inicialización
-  (async ()=>{
-    await cargarCatalogoDesdeFirestore(); 
-    await cargarClientes(); 
-    render();
-  })();
+ (async ()=>{
+  await cargarCatalogoDesdeFirestore(); 
+  await cargarClientes(); 
+  render();
+
+  await sincronizarVentasPendientes(); // 👈 sincronizar al inicio
+})();
+  window.addEventListener('online', ()=> {
+  sincronizarVentasPendientes();
+});
 </script>
 </body>
 </html>
