@@ -1008,8 +1008,6 @@ if (action === 'print') cerrarReimp(); // opcional
     const folio=await runTransaction(db,async(tx)=>{const snap=await tx.get(ref); if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1;} const actual=Number(snap.data().valor||0)+1; tx.update(ref,{valor:actual,actualizado:serverTimestamp()}); return actual;});
     return `RV-${String(folio).padStart(6,'0')}`;
   }
-import { serverTimestamp, addDoc, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
 async function guardarVentaEnFirestore(venta) {
   try {
     // 🔹 Clonamos sin romper los tipos especiales de Firestore
