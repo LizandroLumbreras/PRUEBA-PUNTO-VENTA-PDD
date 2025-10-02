@@ -889,17 +889,21 @@ if (action === 'print') cerrarReimp(); // opcional
     const folio=await runTransaction(db,async(tx)=>{const snap=await tx.get(ref); if(!snap.exists()){tx.set(ref,{valor:1,actualizado:serverTimestamp()}); return 1;} const actual=Number(snap.data().valor||0)+1; tx.update(ref,{valor:actual,actualizado:serverTimestamp()}); return actual;});
     return `RV-${String(folio).padStart(6,'0')}`;
   }
-  async function guardarVentaEnFirestore(venta) {
+async function guardarVentaEnFirestore(venta) {
   try {
+    // 🔹 Limpieza: quita undefined (Firestore no lo soporta)
+    const ventaLimpia = JSON.parse(JSON.stringify(venta));
+
     const ref = collection(db, 'rutas_venta', rutaId, 'ventas');
-    const docRef = await addDoc(ref, venta);
+    const docRef = await addDoc(ref, ventaLimpia);
     return docRef.id;
   } catch (err) {
     console.error("Error guardando venta en Firestore:", err);
-    await guardarVentaOffline(venta); // fallback en IndexedDB si no hay conexión
+    await guardarVentaOffline(venta); // fallback en IndexedDB
     return null;
   }
 }
+
 // Ahora sí arranca confirmarCobro()
 async function confirmarCobro(){
   try {
