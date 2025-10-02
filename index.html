@@ -691,64 +691,42 @@ btnCerrarReimp.addEventListener('click', cerrarReimp);
 modalReimp.addEventListener('click', (e)=>{ if(e.target === modalReimp) cerrarReimp(); });
 btnBuscarTickets.addEventListener('click', ()=>{ _pagina=1; buscarTickets(); });
 
-function rellenarTicketDesdeVenta(venta){
+function rellenarTicket(venta){
   // Encabezados
-  document.getElementById('tFolio').textContent = `Folio: ${venta.folio||'-'}`;
-  document.getElementById('tFecha').textContent = venta.fecha_txt || '';
-  document.getElementById('tAtendio').textContent = venta.atendio || ATENDIO || '';
+  document.getElementById('tFolio').textContent = `Folio: ${venta.folio}`;
+  document.getElementById('tFecha').textContent = venta.fechaTxt;
+  document.getElementById('tAtendio').textContent = ATENDIO;
 
-  // Cliente (texto simple del registro)
-  document.getElementById('tCliente').textContent = `Cliente: ${venta.cliente || 'Mostrador'}`;
-  document.getElementById('tTipo').textContent = "Público";
-
-  // RFC / CFDI visibles si ocupa factura
-  const tFacturaRow = document.getElementById('tFacturaRow');
-  const tRFCRow     = document.getElementById('tRFCRow');
-  const tCFDIRow    = document.getElementById('tCFDIRow');
-
-  const facturaSi = !!(venta.cliente_ocupa_factura || clienteSeleccionado?.ocupa_factura);
-  tFacturaRow.style.display = 'block';
-  document.getElementById('tFacturaVal').textContent = facturaSi ? 'Sí' : 'No';
-
-  if (facturaSi){
-    tRFCRow.style.display  = 'block';
-    tCFDIRow.style.display = 'block';
-    document.getElementById('tRFC').textContent  = venta.cliente_rfc || '—';
-    document.getElementById('tCFDI').textContent = venta.cliente_uso_cfdi || '—';
-  } else {
-    tRFCRow.style.display  = 'none';
-    tCFDIRow.style.display = 'none';
-  }
+  // Cliente
+  document.getElementById('tCliente').textContent = `Cliente: ${venta.clienteTxt}`;
 
   // Detalle
-  const tLineas = document.getElementById('tLineas');
-  tLineas.innerHTML = '';
+  const tLineas=document.getElementById('tLineas');
+  tLineas.innerHTML='';
   (venta.detalle||[]).forEach(it=>{
     const fila=document.createElement('div');
     fila.className='t-row';
-    const cant = Number(it.cantidad||0).toFixed(2);
-    const imp  = money(Number(it.importe||0));
-    fila.innerHTML = `<span class="t-desc">${cant} ${it.nombre||''}</span><span class="t-imp">${imp}</span>`;
+    fila.innerHTML=`<span class="t-desc">${it.cantidad.toFixed(2)} ${it.nombre}</span><span class="t-imp">${money(it.importe)}</span>`;
     tLineas.appendChild(fila);
   });
 
   // Totales
-  document.getElementById('tSubtotal').textContent  = money(Number(venta.subtotal||0));
-  document.getElementById('tImpuestos').textContent = money(Number(venta.impuestos||0));
-  document.getElementById('tTotal').textContent     = money(Number(venta.total||0));
+  document.getElementById('tSubtotal').textContent  = money(venta.subtotal||0);
+  document.getElementById('tImpuestos').textContent = money(venta.impuestos||0);
+  document.getElementById('tTotal').textContent     = money(venta.total||0);
 
-  // Método y recibido/cambio
-  document.getElementById('tMetodo').textContent = (venta.metodo_pago||'').toUpperCase();
-  const rRow = document.getElementById('tRecibidoRow');
-  if ((venta.metodo_pago||'').toLowerCase()==='efectivo' || (venta.metodo_pago||'').toLowerCase()==='mixto'){
-    rRow.style.display='block';
-    document.getElementById('tRecibido').textContent = money(Number(venta.recibido||0));
-    document.getElementById('tCambio').textContent   = money(Number(venta.cambio||0));
-  } else {
-    rRow.style.display='none';
+  // Método y cambio
+  document.getElementById('tMetodo').textContent = venta.metodo.toUpperCase();
+  if(venta.metodo==='efectivo'||venta.metodo==='mixto'){
+    document.getElementById('tRecibidoRow').style.display='block';
+    document.getElementById('tRecibido').textContent=money(venta.recibido);
+    document.getElementById('tCambio').textContent=money(venta.cambio);
+  }else{
+    document.getElementById('tRecibidoRow').style.display='none';
   }
 
-  document.getElementById('tNotas').textContent = (venta.notas||'');
+  // Notas
+  document.getElementById('tNotas').textContent = venta.notas||'';
 }
 
 async function reimprimirVentaPorId(docId, imprimir=true){
@@ -903,7 +881,21 @@ if (action === 'print') cerrarReimp(); // opcional
   async function guardarVentaEnFirestore(payload){const col=collection(db,'rutas_venta',rutaId,'ventas'); const docRef=await addDoc(col,payload); return docRef.id;}
 
   // ===== Ticket =====
-  function rellenarTicket({folio,fechaTxt,clienteTxt,metodo,recibido,cambio,notas}){
+rellenarTicket({
+  folio,
+  fechaTxt,
+  clienteTxt,
+  metodo,
+  recibido,
+  cambio,
+  notas,
+  detalle: venta.detalle,   // 👈 ahora sí mandamos el detalle
+  subtotal,
+  impuestos,
+  total
+});
+window.print();
+
     // Encabezados
     document.getElementById('tFolio').textContent=`Folio: ${folio}`;
     document.getElementById('tFecha').textContent=fechaTxt;
